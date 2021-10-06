@@ -341,4 +341,9 @@ public class SampleMecanumDrive extends MecanumDrive {
         );
 
     }
+
+    public void cancel() {
+        trajectorySequenceRunner.cancel();
+        setMotorPowers(0,0,0,0);
+    }
 }

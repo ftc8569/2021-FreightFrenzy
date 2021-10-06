@@ -15,6 +15,7 @@ import com.acmerobotics.roadrunner.profile.MotionState;
 import com.acmerobotics.roadrunner.trajectory.Trajectory;
 import com.acmerobotics.roadrunner.trajectory.TrajectoryMarker;
 import com.acmerobotics.roadrunner.util.NanoClock;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 
 import org.firstinspires.ftc.teamcode.roadrunner.trajectorysequence.sequencesegment.SequenceSegment;
 import org.firstinspires.ftc.teamcode.roadrunner.trajectorysequence.sequencesegment.TrajectorySegment;
@@ -27,6 +28,7 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
+@Disabled
 @Config
 public class TrajectorySequenceRunner {
     public static String COLOR_INACTIVE_TRAJECTORY = "#4caf507a";
@@ -269,5 +271,9 @@ public class TrajectorySequenceRunner {
 
     public boolean isBusy() {
         return currentTrajectorySequence != null;
+    }
+
+    public void cancel() {
+        currentTrajectorySequence = null;
     }
 }
