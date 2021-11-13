@@ -37,7 +37,7 @@ public class TeleOPV1 extends OpMode {
     public long intakeStartTime = 0;
     public long duckWheelStartTime = 0;
     SampleMecanumDrive drive;
-    TeleopHeadingDriftController controller;
+//    TeleopHeadingDriftController controller;
 
     @Override
     public void init() {
@@ -61,7 +61,7 @@ public class TeleOPV1 extends OpMode {
 
 
 
-        controller = new TeleopHeadingDriftController(2,10);
+//        controller = new TeleopHeadingDriftController(2,10);
 
         telemetry.addData(">", "Initialized!!!");
         telemetry.update();
@@ -78,9 +78,9 @@ public class TeleOPV1 extends OpMode {
             drive.setPoseEstimate(new Pose2d(pose.getX(),pose.getY(),0));
         }
 
-        if(controller.getEnabled() != driftController) {
-            controller.setEnabled(driftController);
-        }
+//        if(controller.getEnabled() != driftController) {
+//            controller.setEnabled(driftController);
+//        }
         if(Math.abs(gamepad1.left_stick_x) > .05 || Math.abs(gamepad1.left_stick_y) > .05 || gamepad1.right_trigger > .05 || gamepad1.left_trigger > .05) {
             Vector2d input = new Vector2d(
                     expTranslation ? Math.pow(gamepad1.left_stick_y,driveExp) * Math.signum(-gamepad1.left_stick_y):-gamepad1.left_stick_y,
@@ -89,7 +89,8 @@ public class TeleOPV1 extends OpMode {
             double rotation = Math.pow(gamepad1.left_trigger,driveExp) - Math.pow(gamepad1.right_trigger,driveExp);
             power = new Pose2d(input.getX(),input.getY(), rotation);
         } else power = new Pose2d();
-        drive.setWeightedDrivePower(controller.control(pose,power));
+//        drive.setWeightedDrivePower(controller.control(pose,power));
+        drive.setWeightedDrivePower(power);
 
         if(gamepad1.right_bumper && millis - intakeStartTime > 500) {
             intakeOn = !intakeOn;
