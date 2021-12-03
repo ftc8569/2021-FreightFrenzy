@@ -8,7 +8,7 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
  * optimised to what I have found us to use for intakes.
  */
 public class IntakeController {
-    private IntakeInitializer initializer; //The initalizer we will use to initialize and control the intake
+    private IntakeHardware hardware; //The initalizer we will use to initialize and control the intake
     private HardwareMap hw; // not strictly necessary right now but as we add build out more methods
                             // it might become necessary
     private double power = 0; // the current power the intake is set to
@@ -19,24 +19,23 @@ public class IntakeController {
      * IntakeInitializer for your own hardware, and obviously to pass the hardwaremap. Make sure to
      * pass yourInitializer.class as in order to continue controlling your hardware we need to save
      * an instance of the class. Maybe a slightly dubious way to implement this but it works.
-     * @param initializer your initalizer class that you implement so that it works corectly for
+     * @param hardware your initalizer class that you implement so that it works corectly for
      *                    your hardware.
      * @param hw the hardware map from your opmode so that we can give it to the initalizer to be
      *           able to find your devices.
      */
-    public IntakeController(Class<? extends IntakeInitializer> initializer, HardwareMap hw) {
+    public IntakeController(Class<? extends IntakeHardware> hardware, HardwareMap hw) {
         this.hw = hw;
         try {
-            this.initializer = initializer.newInstance();
-            this.initializer.init(hw);
+            this.hardware = hardware.newInstance();
+            this.hardware.init(hw);
         } catch (InstantiationException | IllegalAccessException e) {
             e.printStackTrace();
         }
-        this.hw = hw;
     }
 
     public void setPower(double power) {
-        initializer.set(power);
+        hardware.set(power);
         this.enabled = power != 0;
         this.power = power;
     }
@@ -47,7 +46,7 @@ public class IntakeController {
 
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
-        initializer.set(enabled ? power : 0);
+        hardware.set(enabled ? power : 0);
     }
 
     public boolean isEnabled() {
@@ -55,17 +54,17 @@ public class IntakeController {
     }
 
     public void toggle() {
-        initializer.set(enabled ? 0 : power);
+        hardware.set(enabled ? 0 : power);
         enabled = !enabled;
     }
 
     public void reverse() {
        power *= -1;
-       initializer.set(power);
+       hardware.set(power);
     }
 
     public void stop() {
-        initializer.set(0.0);
+        hardware.set(0.0);
         power = 0;
         enabled = false;
     }

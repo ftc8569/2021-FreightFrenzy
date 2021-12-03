@@ -8,13 +8,18 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.Gamepad;
+import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 
 import org.firstinspires.ftc.robotcore.internal.tfod.Timer;
+import org.firstinspires.ftc.teamcode.Controllers.ArmController;
+import org.firstinspires.ftc.teamcode.Controllers.ArmHardware;
+import org.firstinspires.ftc.teamcode.Controllers.ArmHardware2021;
+import org.firstinspires.ftc.teamcode.Controllers.MiniPID;
 import org.firstinspires.ftc.teamcode.Controllers.TeleopHeadingDriftController;
 import org.firstinspires.ftc.teamcode.roadrunner.drive.SampleMecanumDrive;
 
-@TeleOp(name = "TeleopV1", group = "Development")
 @Config
+@TeleOp(name = "TeleopV1", group = "Development")
 
 public class TeleOPV1 extends OpMode {
 
@@ -24,20 +29,27 @@ public class TeleOPV1 extends OpMode {
     public static double intakeSpeed = 1,
                          duckWheelSpeed = .75;
 
-    private static boolean intakeOn = false,
-                        duckWheelOn = false,
-                      intakeReverse = false,
-                            rumbled = false,
-                    driftController = false;
+    public static PIDFCoefficients pidfCoefficients = new PIDFCoefficients(.01, 0, 0, 0);
+    //testing this
+    public static double outputFilter = 0.1;
 
-    public DcMotorEx intakeMotor, duckWheelMotor, armMotor;
+    private static boolean intakeOn = false;
+    private static boolean duckWheelOn = false;
+    private static boolean intakeReverse = false;
+    private static boolean rumbled = false;
+    private static final boolean driftController = true;
+
+    public DcMotorEx intakeMotor, duckWheelMotor;
     //duckWheel port 0 expansion hub
     //intake port 1 on expansion hub
 
     public long intakeStartTime = 0;
     public long duckWheelStartTime = 0;
     SampleMecanumDrive drive;
-//    TeleopHeadingDriftController controller;
+    TeleopHeadingDriftController controller;
+
+    ArmController armController;
+
 
     @Override
     public void init() {
@@ -54,14 +66,10 @@ public class TeleOPV1 extends OpMode {
         intakeMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         intakeMotor.setPower(0);
 
-        armMotor = hardwareMap.get(DcMotorEx.class, "armMotor");
-        armMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        armMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        armMotor.setPower(0);
+        controller = new TeleopHeadingDriftController(3.5, .125, pidfCoefficients);
+        controller.setOutputScale(.5);
 
-
-
-//        controller = new TeleopHeadingDriftController(2,10);
+        armController = new ArmController(ArmHardware2021.class, hardwareMap);
 
         telemetry.addData(">", "Initialized!!!");
         telemetry.update();
@@ -69,18 +77,21 @@ public class TeleOPV1 extends OpMode {
 
     @Override
     public void loop() {
-        Pose2d power = new Pose2d();
+        Pose2d power = new Pose2d(0, 0, 0);
         drive.update();
         Pose2d pose = drive.getPoseEstimate();
         long millis = System.currentTimeMillis();
+        controller.setPIDF(pidfCoefficients);
+        controller.setOutputFilter(outputFilter);
 
         if(this.gamepad1.y) {
             drive.setPoseEstimate(new Pose2d(pose.getX(),pose.getY(),0));
+            controller.reset(drive.getPoseEstimate());
         }
 
-//        if(controller.getEnabled() != driftController) {
-//            controller.setEnabled(driftController);
-//        }
+        if(controller.getEnabled() != driftController) {
+            controller.setEnabled(driftController);
+        }
         if(Math.abs(gamepad1.left_stick_x) > .05 || Math.abs(gamepad1.left_stick_y) > .05 || gamepad1.right_trigger > .05 || gamepad1.left_trigger > .05) {
             Vector2d input = new Vector2d(
                     expTranslation ? Math.pow(gamepad1.left_stick_y,driveExp) * Math.signum(-gamepad1.left_stick_y):-gamepad1.left_stick_y,
@@ -88,9 +99,20 @@ public class TeleOPV1 extends OpMode {
             ).rotated(-pose.getHeading());
             double rotation = Math.pow(gamepad1.left_trigger,driveExp) - Math.pow(gamepad1.right_trigger,driveExp);
             power = new Pose2d(input.getX(),input.getY(), rotation);
-        } else power = new Pose2d();
-//        drive.setWeightedDrivePower(controller.control(pose,power));
-        drive.setWeightedDrivePower(power);
+            telemetry.addData("Input Power", power.toString());
+        } else {
+            power = new Pose2d(0,0,0);
+            telemetry.addData("Input Power", new Pose2d(0,0,0).toString());
+        }
+        Pose2d controlled = controller.control(pose, power);
+        drive.setWeightedDrivePower(controlled);
+        telemetry.addData("Setpoint, Target Pose, Actual, Error",
+          Math.round(controller.getSetpoint() * 100)/100 + ", " +
+                  Math.round(controller.getTargetPose() * 100)/100 + ", " +
+                  Math.round(Math.toDegrees(pose.getHeading()) * 100)/100 + ", " +
+                  Math.round(controller.getError() * 100)/100);
+        telemetry.addData("Controlled Power", "(%.3f, %.3f, %.3f°)", controlled.getX(), controlled.getY(), controlled.getHeading());
+//        drive.setWeightedDrivePower(power);
 
         if(gamepad1.right_bumper && millis - intakeStartTime > 500) {
             intakeOn = !intakeOn;
@@ -102,8 +124,8 @@ public class TeleOPV1 extends OpMode {
         }
 
         if(Math.abs(gamepad1.right_stick_y) > .05) {
-            armMotor.setPower(-gamepad1.right_stick_y);
-        } else armMotor.setPower(0);
+            armController.setPower(-gamepad1.right_stick_y);
+        } else armController.setPower(0);
 
         if(gamepad1.b) intakeReverse = !intakeReverse;
 
@@ -118,3 +140,4 @@ public class TeleOPV1 extends OpMode {
         telemetry.addData("power", power);
     }
 }
+

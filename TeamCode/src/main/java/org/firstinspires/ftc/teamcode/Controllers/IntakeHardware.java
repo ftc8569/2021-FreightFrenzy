@@ -7,7 +7,7 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
  * way it needs to be initialized and power set to it.
  * @see IntakeController
  */
-public abstract class IntakeInitializer {
+public abstract class IntakeHardware {
 
     /**
      * This needs to be implemented to correctly initialize your hardware. If this is not done
