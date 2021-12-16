@@ -33,9 +33,12 @@ public class DriveConstants {
      * If using the built-in motor velocity PID, update MOTOR_VELO_PID with the tuned coefficients
      * from DriveVelocityPIDTuner.
      */
-    public static final boolean RUN_USING_ENCODER = false;
-    public static PIDFCoefficients MOTOR_VELO_PID = new PIDFCoefficients(0, 0, 0,
-            getMotorVelocityF(MAX_RPM / 60 * TICKS_PER_REV));
+    public static final boolean RUN_USING_ENCODER = true;
+    public static PIDFCoefficients MOTOR_VELO_PID = new PIDFCoefficients(7, 0, 2,
+//            getMotorVelocityF(MAX_RPM / 60 * TICKS_PER_REV) //default
+//            13.252612501960092 // empirical
+            13 // tuned
+            );
 
     /*
      * These are physical constants that can be determined from your robot (including the track
@@ -46,8 +49,8 @@ public class DriveConstants {
      * convenience. Make sure to exclude any gear ratio included in MOTOR_CONFIG from GEAR_RATIO.
      */
     public static double WHEEL_RADIUS = 1.9685; // in
-    public static double GEAR_RATIO = 1; // output (wheel) speed / input (motor) speed
-    public static double TRACK_WIDTH = 10.776; // in
+    public static double GEAR_RATIO = 1.0386111247092188579908118876286; // output (wheel) speed / input (motor) speed
+    public static double TRACK_WIDTH = 16; // in // this ois highrer than it should be but it seems to work
 
     /*
      * These are the feedforward parameters used to model the drive motor behavior. If you are using
@@ -88,11 +91,11 @@ public class DriveConstants {
      * You are free to raise this on your own if you would like. It is best determined through experimentation.
 
      */
-    public static double MAX_VEL = 89.67126450957686 * .9;
-    public static double MAX_ACCEL = 89.67126450957686 * .9;
-    public static double MAX_ANG_VEL = Math.toRadians(428.943089054) * .9;
+    public static double MAX_VEL = 89.67126450957686 * .875;
+    public static double MAX_ACCEL = 89.67126450957686 * .875;
+    public static double MAX_ANG_VEL = Math.toRadians(377) * .85;
 //            Math.toRadians(360);
-    public static double MAX_ANG_ACCEL = Math.toRadians(428.943089054) * .9;
+    public static double MAX_ANG_ACCEL = Math.toRadians(377) * .85;
 //        Math.toRadians(360);
 
 

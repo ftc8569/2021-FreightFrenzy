@@ -27,17 +27,24 @@ public class TeleOPV1 extends OpMode {
     public static boolean expTranslation = true; //useful for turning but can definitely help with translation as well
 
     public static double intakeSpeed = 1,
-                         duckWheelSpeed = .75;
+                         duckWheelSpeed = .75,
+                         armStartPos = 0,
+                         armTopPos = 1140 - 20,
+                         armMiddlePos = 1510 - 20,
+                         armBottomPos = 1740 - 20;
 
-    public static PIDFCoefficients pidfCoefficients = new PIDFCoefficients(.01, 0, 0, 0);
+    public static PIDFCoefficients pidfCoefficients = new PIDFCoefficients(.015, 0, 0, 0);
     //testing this
     public static double outputFilter = 0.1;
+
+    public static DcMotor.RunMode armMode = DcMotor.RunMode.RUN_TO_POSITION;
 
     private static boolean intakeOn = false;
     private static boolean duckWheelOn = false;
     private static boolean intakeReverse = false;
     private static boolean rumbled = false;
     private static final boolean driftController = true;
+
 
     public DcMotorEx intakeMotor, duckWheelMotor;
     //duckWheel port 0 expansion hub
@@ -69,7 +76,10 @@ public class TeleOPV1 extends OpMode {
         controller = new TeleopHeadingDriftController(3.5, .125, pidfCoefficients);
         controller.setOutputScale(.5);
 
-        armController = new ArmController(ArmHardware2021.class, hardwareMap);
+        armController = new ArmController(ArmHardware2021.class, hardwareMap, armMode);
+        if(armMode == DcMotor.RunMode.RUN_TO_POSITION) {
+            armController.setPower(1);
+        }
 
         telemetry.addData(">", "Initialized!!!");
         telemetry.update();
@@ -88,6 +98,11 @@ public class TeleOPV1 extends OpMode {
             drive.setPoseEstimate(new Pose2d(pose.getX(),pose.getY(),0));
             controller.reset(drive.getPoseEstimate());
         }
+
+//        if(Math.abs(gamepad1.right_stick_y) > .05 || Math.abs(gamepad1.right_stick_x) > .05) {
+//            double desAng = Math.atan2(-gamepad2.right_stick_y, gamepad2.right_stick_x);
+//            controller.setTargetPose(desAng);
+//        }
 
         if(controller.getEnabled() != driftController) {
             controller.setEnabled(driftController);
@@ -123,9 +138,23 @@ public class TeleOPV1 extends OpMode {
             duckWheelStartTime = millis;
         }
 
-        if(Math.abs(gamepad1.right_stick_y) > .05) {
-            armController.setPower(-gamepad1.right_stick_y);
-        } else armController.setPower(0);
+        if (Math.abs(gamepad1.right_stick_y) > .05) {
+            if(armMode != DcMotor.RunMode.RUN_USING_ENCODER) {
+                armMode = DcMotor.RunMode.RUN_USING_ENCODER;
+                armController.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            }
+                armController.setPower(-gamepad1.right_stick_y);
+        } else if(gamepad1.dpad_right || gamepad1.dpad_left || gamepad1.dpad_up || gamepad1.dpad_down){
+            if(armMode != DcMotor.RunMode.RUN_TO_POSITION) {
+                armMode = DcMotor.RunMode.RUN_TO_POSITION;
+                armController.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            }
+            armController.setPower(ArmController.armSetPosPower);
+            if(gamepad1.dpad_up) armController.setPosition((int) armTopPos);
+            if(gamepad1.dpad_left) armController.setPosition((int) armMiddlePos);
+            if(gamepad1.dpad_down) armController.setPosition((int) armBottomPos);
+            if(gamepad1.dpad_right) armController.setPosition((int) armStartPos);
+        } else if(armMode == DcMotor.RunMode.RUN_USING_ENCODER) armController.setPower(0);
 
         if(gamepad1.b) intakeReverse = !intakeReverse;
 
@@ -136,8 +165,10 @@ public class TeleOPV1 extends OpMode {
             rumbled = true;
         }
 
+        telemetry.addData("ArmPos", armController.getPosition());
         telemetry.addData("x, y, degrees:",pose.toString());
         telemetry.addData("power", power);
+        telemetry.addData("motor PID", armController.getPositionPID().toString());
     }
 }
 

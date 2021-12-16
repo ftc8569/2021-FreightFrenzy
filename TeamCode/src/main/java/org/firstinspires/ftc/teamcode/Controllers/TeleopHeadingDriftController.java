@@ -33,9 +33,9 @@ public class TeleopHeadingDriftController {
     }
 
 
-    public Pose2d control(Pose2d currentPose, Pose2d drivepower) {
+    public Pose2d control(Pose2d currentPose, Pose2d drivePower) {
         this.currentPose = currentPose;
-        double turn = drivepower.getHeading();
+        double turn = drivePower.getHeading();
         boolean turning = Math.abs(turn) > .05;
         if(firstStart) {
             targetPose = currentPose;
@@ -45,7 +45,7 @@ public class TeleopHeadingDriftController {
             if (turning) {
                 lastTurning = true;
                 timerstarted = false;
-                return drivepower;
+                return drivePower;
             } else {
                 if (lastTurning) {
                     if(timerstarted) {
@@ -54,29 +54,29 @@ public class TeleopHeadingDriftController {
                             pid.setSetpoint(targetPose.getHeading());
                             lastTurning = false;
                             timerstarted = false;
-                            return drivepower;
-                        } else return drivepower;
+                            return drivePower;
+                        } else return drivePower;
                     } else {
                         stoppedTurning = System.currentTimeMillis();
                         timerstarted = true;
-                        return drivepower;
+                        return drivePower;
                     }
                 } else {
                     double output = pid.getOutputAngles(Math.toDegrees(currentPose.getHeading()), Math.toDegrees(targetPose.getHeading()));
                     if(Math.abs(output) >= outputDeadzone) {
                         if (Math.abs(pid.getError()) >= poseTolerance)
-                            return drivepower.minus(new Pose2d(0, 0, output));
+                            return drivePower.minus(new Pose2d(0, 0, output));
                             // possibly * -1 because now that I think about it I think this is actually x and y
                             // swapped so instead of doing rotation-controller.control() in setting your
                             // power it will be +
                         else {
                             pid.reset();
-                            return drivepower;
+                            return drivePower;
                         }
-                    } else return drivepower;
+                    } else return drivePower;
                 }
             }
-        } else return drivepower;
+        } else return drivePower;
     }
 
     public double getError() {
@@ -86,6 +86,8 @@ public class TeleopHeadingDriftController {
     public double getSetpoint() {
        return pid.getSetpoint();
     }
+
+    public void setTargetPose(double targetPose) {this.targetPose = new Pose2d(0, 0, targetPose);}
 
     public double getTargetPose() {
         return Math.toDegrees(targetPose.getHeading());
