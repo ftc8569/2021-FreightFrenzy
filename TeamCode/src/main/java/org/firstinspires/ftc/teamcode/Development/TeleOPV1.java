@@ -7,6 +7,7 @@ import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 
@@ -27,7 +28,7 @@ public class TeleOPV1 extends OpMode {
     public static boolean expTranslation = true; //useful for turning but can definitely help with translation as well
 
     public static double intakeSpeed = 1,
-                         duckWheelSpeed = .75,
+                         duckWheelSpeed = .6,
                          armStartPos = 0,
                          armTopPos = 1140 - 20,
                          armMiddlePos = 1510 - 20,
@@ -46,7 +47,7 @@ public class TeleOPV1 extends OpMode {
     private static final boolean driftController = true;
 
 
-    public DcMotorEx intakeMotor, duckWheelMotor;
+    public DcMotorEx intakeMotor, duckWheelMotor, duckWheelMotor2;
     //duckWheel port 0 expansion hub
     //intake port 1 on expansion hub
 
@@ -69,6 +70,11 @@ public class TeleOPV1 extends OpMode {
         duckWheelMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         duckWheelMotor.setPower(0);
 
+        duckWheelMotor2 = hardwareMap.get(DcMotorEx.class, "DuckWheelMotor2");
+        duckWheelMotor2.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        duckWheelMotor2.setDirection(DcMotorSimple.Direction.REVERSE);
+        duckWheelMotor2.setPower(0);
+
         intakeMotor = hardwareMap.get(DcMotorEx.class, "intakeMotor");
         intakeMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         intakeMotor.setPower(0);
@@ -77,9 +83,6 @@ public class TeleOPV1 extends OpMode {
         controller.setOutputScale(.5);
 
         armController = new ArmController(ArmHardware2021.class, hardwareMap, armMode);
-        if(armMode == DcMotor.RunMode.RUN_TO_POSITION) {
-            armController.setPower(1);
-        }
 
         telemetry.addData(">", "Initialized!!!");
         telemetry.update();
@@ -87,6 +90,10 @@ public class TeleOPV1 extends OpMode {
 
     @Override
     public void loop() {
+        if(PoseStorage.endPose != null) {
+            drive.setPoseEstimate(PoseStorage.endPose);
+            PoseStorage.endPose = null;
+        }
         Pose2d power = new Pose2d(0, 0, 0);
         drive.update();
         Pose2d pose = drive.getPoseEstimate();
