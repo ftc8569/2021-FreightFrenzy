@@ -58,11 +58,15 @@ public class TeleOPV1 extends OpMode {
 
     ArmController armController;
 
+    boolean isRed;
+
 
     @Override
     public void init() {
         telemetry.addData(">", "Initializing...");
         telemetry.update();
+
+        isRed = PoseStorage.alliance == PoseStorage.Alliance.RED;
 
         drive = new SampleMecanumDrive(hardwareMap);
 
@@ -117,7 +121,7 @@ public class TeleOPV1 extends OpMode {
             Vector2d input = new Vector2d(
                     expTranslation ? Math.pow(gamepad1.left_stick_y,driveExp) * Math.signum(-gamepad1.left_stick_y):-gamepad1.left_stick_y,
                     expTranslation ? Math.pow(gamepad1.left_stick_x,driveExp) * Math.signum(-gamepad1.left_stick_x):-gamepad1.left_stick_x
-            ).rotated(-pose.getHeading());
+            ).rotated(-pose.getHeading() + Math.toDegrees(isRed ? 90 : -90));
             double rotation = Math.pow(gamepad1.left_trigger,driveExp) - Math.pow(gamepad1.right_trigger,driveExp);
             power = new Pose2d(input.getX(),input.getY(), rotation);
             telemetry.addData("Input Power", power.toString());
@@ -164,10 +168,10 @@ public class TeleOPV1 extends OpMode {
 
         if(gamepad1.b) intakeReverse = !intakeReverse;
 
-        if(intakeOn) intakeMotor.setPower(intakeReverse ? -intakeSpeed : intakeSpeed); else intakeMotor.setPower(0);
+        if(intakeOn) intakeMotor.setPower(intakeReverse ? -intakeSpeed * .25: intakeSpeed); else intakeMotor.setPower(0);
         if(duckWheelOn) {
-            duckWheelMotor.setPower(duckWheelSpeed * (PoseStorage.alliance == PoseStorage.Alliance.BLUE ? 1 : -1));
-            duckWheelMotor2.setPower(duckWheelSpeed * (PoseStorage.alliance == PoseStorage.Alliance.BLUE ? 1 : -1));
+            duckWheelMotor.setPower(duckWheelSpeed * (isRed ? -1 : 1));
+            duckWheelMotor2.setPower(duckWheelSpeed * (isRed ? -1 : 1));
         } else duckWheelMotor.setPower(0);
 //        if(gamepad1.a && !rumbled) {
 //            gamepad1.rumble(1.0, 1.0, Gamepad.RUMBLE_DURATION_CONTINUOUS);
