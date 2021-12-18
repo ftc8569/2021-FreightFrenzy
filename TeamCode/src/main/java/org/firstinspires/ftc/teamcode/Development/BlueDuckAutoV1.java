@@ -41,6 +41,8 @@ public class BlueDuckAutoV1 extends TeleOPV1 {
     public void init() {
         super.init();
 
+        PoseStorage.alliance = PoseStorage.Alliance.BLUE;
+
         drive.setPoseEstimate(startPose);
 
         armController.setMode(DcMotor.RunMode.RUN_TO_POSITION);
@@ -48,7 +50,7 @@ public class BlueDuckAutoV1 extends TeleOPV1 {
 
         toDuck = drive.trajectoryBuilder(startPose)
                 .splineToConstantHeading(new Vector2d(-69, 78), Math.toRadians(180))
-                .addDisplacementMarker(() -> duckWheelMotor.setPower(duckWheelSpeed))
+                .addDisplacementMarker(() -> duckWheelMotor.setPower(duckWheelSpeed * (PoseStorage.alliance == PoseStorage.Alliance.BLUE ? 1 : -1)))
                 .addDisplacementMarker(() -> drive.followTrajectoryAsync(toDuck2))
                 .build();
 
@@ -102,6 +104,7 @@ public class BlueDuckAutoV1 extends TeleOPV1 {
                 if(System.currentTimeMillis() - duckSpinTimer > duckSpinTime) {
                     duckWheelMotor.setPower(0);
                     drive.followTrajectoryAsync(toHub);
+                    intakeMotor.setPower(intakeSpeed);
                     state = State.toHub;
                 }
             }
@@ -118,6 +121,7 @@ public class BlueDuckAutoV1 extends TeleOPV1 {
             case deposit: {
                 if(Math.abs(armController.getPosition() - armTopPos) < ArmHardware2021.targetPosTolerance) {
                     armController.setPosition((int) armStartPos);
+                    intakeMotor.setPower(0);
                     drive.followTrajectoryAsync(toDepot);
                     state = State.toDepot;
                 }

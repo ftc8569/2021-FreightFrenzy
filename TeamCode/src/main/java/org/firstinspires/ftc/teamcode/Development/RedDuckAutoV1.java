@@ -41,6 +41,8 @@ public class RedDuckAutoV1 extends TeleOPV1 {
     public void init() {
         super.init();
 
+        PoseStorage.alliance = PoseStorage.Alliance.RED;
+
         drive.setPoseEstimate(startPose);
 
         armController.setMode(DcMotor.RunMode.RUN_TO_POSITION);
@@ -48,7 +50,7 @@ public class RedDuckAutoV1 extends TeleOPV1 {
 
         toDuck = drive.trajectoryBuilder(startPose)
                 .splineToConstantHeading(new Vector2d(-69, -67), Math.toRadians(180))
-                .addDisplacementMarker(() -> duckWheelMotor2.setPower(duckWheelSpeed))
+                .addDisplacementMarker(() -> duckWheelMotor2.setPower(duckWheelSpeed * (PoseStorage.alliance == PoseStorage.Alliance.BLUE ? 1 : -1)))
                 .addDisplacementMarker(() -> drive.followTrajectoryAsync(toDuck2))
                 .build();
 
@@ -60,17 +62,17 @@ public class RedDuckAutoV1 extends TeleOPV1 {
                 .build();
 
         toHub = drive.trajectoryBuilder(toDuck2.end())
-                .lineToConstantHeading(new Vector2d(-66, -52))
-                .splineToSplineHeading(new Pose2d(-36, -52, Math.toRadians(180)), Math.toRadians(0))
+                .lineToConstantHeading(new Vector2d(-66, -46))
+                .splineToSplineHeading(new Pose2d(-36, -46, Math.toRadians(180)), Math.toRadians(0))
                 .build();
 
         toDepot = drive.trajectoryBuilder(toHub.end())
-                .splineToLinearHeading(new Pose2d(-72, -42, Math.toRadians(-90)), Math.toRadians(180))
+                .splineToLinearHeading(new Pose2d(-72, -37, Math.toRadians(-90)), Math.toRadians(180))
                 .addDisplacementMarker(() -> drive.followTrajectoryAsync(toDepot2))
                 .build();
 
         toDepot2 = drive.trajectoryBuilder(toDepot.end())
-                .forward(27)
+                .forward(25)
                 .build();
 
         telemetry.addData(">", "Actually Initialized!!!");
@@ -102,6 +104,7 @@ public class RedDuckAutoV1 extends TeleOPV1 {
                 if(System.currentTimeMillis() - duckSpinTimer > duckSpinTime) {
                     duckWheelMotor2.setPower(0);
                     drive.followTrajectoryAsync(toHub);
+                    intakeMotor.setPower(intakeSpeed);
                     state = State.toHub;
                 }
             }
@@ -117,7 +120,7 @@ public class RedDuckAutoV1 extends TeleOPV1 {
 
             case deposit: {
                 if(Math.abs(armController.getPosition() - armTopPos) < ArmHardware2021.targetPosTolerance) {
-                    armController.setPosition((int) armStartPos);
+                    armController.setPosition((int) armStartPos);intakeMotor.setPower(0);
                     drive.followTrajectoryAsync(toDepot);
                     state = State.toDepot;
                 }

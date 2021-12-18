@@ -72,7 +72,6 @@ public class TeleOPV1 extends OpMode {
 
         duckWheelMotor2 = hardwareMap.get(DcMotorEx.class, "DuckWheelMotor2");
         duckWheelMotor2.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        duckWheelMotor2.setDirection(DcMotorSimple.Direction.REVERSE);
         duckWheelMotor2.setPower(0);
 
         intakeMotor = hardwareMap.get(DcMotorEx.class, "intakeMotor");
@@ -166,11 +165,14 @@ public class TeleOPV1 extends OpMode {
         if(gamepad1.b) intakeReverse = !intakeReverse;
 
         if(intakeOn) intakeMotor.setPower(intakeReverse ? -intakeSpeed : intakeSpeed); else intakeMotor.setPower(0);
-        if(duckWheelOn) duckWheelMotor.setPower(duckWheelSpeed); else duckWheelMotor.setPower(0);
-        if(gamepad1.a && !rumbled) {
-            gamepad1.rumble(1.0, 1.0, Gamepad.RUMBLE_DURATION_CONTINUOUS);
-            rumbled = true;
-        }
+        if(duckWheelOn) {
+            duckWheelMotor.setPower(duckWheelSpeed * (PoseStorage.alliance == PoseStorage.Alliance.BLUE ? 1 : -1));
+            duckWheelMotor2.setPower(duckWheelSpeed * (PoseStorage.alliance == PoseStorage.Alliance.BLUE ? 1 : -1));
+        } else duckWheelMotor.setPower(0);
+//        if(gamepad1.a && !rumbled) {
+//            gamepad1.rumble(1.0, 1.0, Gamepad.RUMBLE_DURATION_CONTINUOUS);
+//            rumbled = true;
+//        }
 
         telemetry.addData("ArmPos", armController.getPosition());
         telemetry.addData("x, y, degrees:",pose.toString());
