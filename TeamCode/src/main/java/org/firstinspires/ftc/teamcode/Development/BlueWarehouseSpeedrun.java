@@ -6,26 +6,24 @@ import com.acmerobotics.roadrunner.trajectory.Trajectory;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.hardware.DcMotor;
 
-import org.firstinspires.ftc.robotcore.internal.camera.libuvc.api.UvcApiExposureControl;
 import org.firstinspires.ftc.teamcode.Controllers.ArmController;
 import org.firstinspires.ftc.teamcode.Controllers.ArmHardware2021;
 import org.firstinspires.ftc.teamcode.roadrunner.drive.DriveConstants;
 import org.firstinspires.ftc.teamcode.roadrunner.drive.SampleMecanumDrive;
-import org.opencv.core.Mat;
 
 import java.util.HashMap;
 
 @Autonomous
-public class BlueDuckAutoV1 extends TeleOPV1 {
+public class BlueWarehouseSpeedrun extends TeleOPV1 {
 
     public HashMap<String, Trajectory> segments = new HashMap<>();
 
-    public static Pose2d startPose = new Pose2d(-38.5, 83, Math.toRadians(-90));
+    public static Pose2d startPose = new Pose2d(7, 63, Math.toDegrees(180));
 
-    public static Trajectory toDuck, toDuck2, toHub, toDepot, toDepot2;
+    public static Trajectory toDeposit, toDuck2, toHub, toWarehouse, toWarehouse2;
 
     public enum State {
-        init, toDuck, spinDuck, toHub, deposit, toDepot
+        init, toDeposit, deposit, toWarehouse, a, toDepot
     }
 
     public State state = State.init;
@@ -48,13 +46,10 @@ public class BlueDuckAutoV1 extends TeleOPV1 {
         armController.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         armController.setPower(ArmController.armSetPosPower);
 
-        toDuck = drive.trajectoryBuilder(startPose)
-                .splineToConstantHeading(new Vector2d(-69, 78), Math.toRadians(180))
-                .addDisplacementMarker(() -> duckWheelMotor.setPower(duckWheelSpeed * (PoseStorage.alliance == PoseStorage.Alliance.BLUE ? 1 : -1)))
-                .addDisplacementMarker(() -> drive.followTrajectoryAsync(toDuck2))
-                .build();
+        toDeposit = drive.trajectoryBuilder(startPose)
+.back(32)                .build();
 
-        toDuck2 = drive.trajectoryBuilder(toDuck.end())
+        toDuck2 = drive.trajectoryBuilder(toDeposit.end())
                 .back(6.75, SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL*.5, DriveConstants.MAX_ANG_VEL, DriveConstants.TRACK_WIDTH),
                         SampleMecanumDrive.getAccelerationConstraint(DriveConstants.MAX_ACCEL))
                 .back(2, SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL*.165, DriveConstants.MAX_ANG_VEL, DriveConstants.TRACK_WIDTH),
@@ -66,13 +61,13 @@ public class BlueDuckAutoV1 extends TeleOPV1 {
                 .splineToSplineHeading(new Pose2d(-36, 52, Math.toRadians(180)), Math.toRadians(0))
                 .build();
 
-        toDepot = drive.trajectoryBuilder(toHub.end())
-                .splineToLinearHeading(new Pose2d(-72, 42, Math.toRadians(90)), Math.toRadians(180))
-                .addDisplacementMarker(() -> drive.followTrajectoryAsync(toDepot2))
+        toWarehouse = drive.trajectoryBuilder(toHub.end())
+                .splineToLinearHeading(new Pose2d(12, 65, Math.toRadians(0)), Math.toRadians(90))
+                .addDisplacementMarker(() -> drive.followTrajectoryAsync(toWarehouse2))
                 .build();
 
-        toDepot2 = drive.trajectoryBuilder(toDepot.end())
-                .forward(27)
+        toWarehouse2 = drive.trajectoryBuilder(toWarehouse.end())
+                .forward(24)
                 .build();
 
         telemetry.addData(">", "Actually Initialized!!!");
@@ -85,57 +80,38 @@ public class BlueDuckAutoV1 extends TeleOPV1 {
         telemetry.addData("Busy?", drive.isBusy());
         telemetry.addData("State", state.toString());
 
+        PoseStorage.endPose = drive.getPoseEstimate();
         switch(state){
             case init: {
-                drive.followTrajectoryAsync(toDuck);
-                state = State.toDuck;
+                drive.followTrajectoryAsync(toDeposit);
+                state = State.toDeposit;
             }
             break;
 
-            case toDuck: {
+            case toDeposit: {
                 if(!drive.isBusy()) {
-                    state = State.spinDuck;
-                    duckSpinTimer = System.currentTimeMillis();
+                   requestOpModeStop();
                 }
             }
             break;
 //
-            case spinDuck: {
-                if(System.currentTimeMillis() - duckSpinTimer > duckSpinTime) {
-                    duckWheelMotor.setPower(0);
-                    drive.followTrajectoryAsync(toHub);
-                    intakeMotor.setPower(intakeSpeed);
-                    state = State.toHub;
-                }
-            }
-            break;
-
-            case toHub: {
-                if(!drive.isBusy()) {
-                    armController.setPosition((int) armTopPos);
-                    state = State.deposit;
-                }
-            }
-            break;
-
             case deposit: {
                 if(Math.abs(armController.getPosition() - armTopPos) < ArmHardware2021.targetPosTolerance) {
                     armController.setPosition((int) armStartPos);
                     intakeMotor.setPower(0);
-                    drive.followTrajectoryAsync(toDepot);
+                    drive.followTrajectoryAsync(toWarehouse);
                     state = State.toDepot;
                 }
             }
             break;
 
-            case toDepot: {
+            case toWarehouse: {
                 if(!drive.isBusy()) {
-                    armController.setPower(0);
-                    PoseStorage.endPose = drive.getPoseEstimate();
                     requestOpModeStop();
                 }
             }
             break;
+
         }
     }
 }

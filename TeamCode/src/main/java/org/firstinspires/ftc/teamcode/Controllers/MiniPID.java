@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode.Controllers;
 
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 /**
  *  <a href="https://github.com/tekdemo/MiniPID-Java">ALL CODE CREDIT GOES TO TEKDEMO ON GITHUB</a>
@@ -47,6 +48,14 @@ public class MiniPID {
 
         private double setpointRange=0;
 
+        private RingBuffer bufferVal, bufferTime;
+
+        private ElapsedTime timer;
+
+        double bufferAvg, buffer2Avg;
+
+
+
         //**********************************
         // Constructor functions
         //**********************************
@@ -58,8 +67,11 @@ public class MiniPID {
          * @param i Integral gain.  Becomes large if setpoint cannot reach target quickly.
          * @param d Derivative gain. Responds quickly to large changes in error. Small values prevents P and I terms from causing overshoot.
          */
-        public MiniPID(double p, double i, double d){
+        public MiniPID(double p, double i, double d, int bufferSize){
             P=p; I=i; D=d;
+            bufferVal = new RingBuffer(bufferSize);
+            bufferTime = new RingBuffer(bufferSize);
+            timer = new ElapsedTime();
             checkSigns();
         }
 
@@ -71,13 +83,19 @@ public class MiniPID {
          * @param d Derivative gain. Responds quickly to large changes in error. Small values prevents P and I terms from causing overshoot.
          * @param f Feed-forward gain. Open loop "best guess" for the output should be. Only useful if setpoint represents a rate.
          */
-        public MiniPID(double p, double i, double d, double f){
+        public MiniPID(double p, double i, double d, double f, int bufferSize){
             P=p; I=i; D=d; F=f;
+            bufferVal = new RingBuffer(bufferSize);
+            bufferTime = new RingBuffer(bufferSize);
+            timer = new ElapsedTime();
             checkSigns();
         }
 
-        public MiniPID(PIDFCoefficients pidf) {
+        public MiniPID(PIDFCoefficients pidf, int bufferSize) {
             P= pidf.p; I= pidf.i; D= pidf.d; F=pidf.f;
+            bufferVal = new RingBuffer(bufferSize);
+            bufferTime = new RingBuffer(bufferSize);
+            timer = new ElapsedTime();
             checkSigns();
         }
 
@@ -252,6 +270,9 @@ public class MiniPID {
          * @param setpoint
          */
         public void setSetpoint(double setpoint){
+            if(this.setpoint != setpoint) {
+                errorSum = 0; //resetting I term when switching setpoints for more consistent behavior
+            }
             this.setpoint=setpoint;
         }
 
@@ -269,6 +290,8 @@ public class MiniPID {
             double Foutput;
 
             this.setpoint=setpoint;
+
+            double deltaTime = timer.seconds();
 
             // Ramp the setpoint used for calculations if user has opted to do so
             if(setpointRange!=0){
@@ -291,13 +314,15 @@ public class MiniPID {
             if(firstRun){
                 lastActual=actual;
                 lastOutput=Poutput+Foutput;
+                deltaTime = 1;
                 firstRun=false;
             }
-
+            bufferVal.push(actual);
+            bufferTime.push(deltaTime);
             // Calculate D Term
             // Note, this is negative. This actually "slows" the system if it's doing
             // the correct thing, and small values helps prevent output spikes and overshoot
-            Doutput= -D*(actual-lastActual);
+            Doutput= (-D*(actual- bufferVal.avg()))/bufferTime.avg();
             lastActual=actual;
 
             // The Iterm is more complex. There's several things to factor in to make it easier to deal with.
@@ -314,22 +339,22 @@ public class MiniPID {
 
             // Figure out what we're doing with the error.
             if(minOutput!=maxOutput && !bounded(output, minOutput,maxOutput) ){
-                errorSum=error;
+                errorSum=error*deltaTime;
                 // reset the error sum to a sane level
                 // Setting to current error ensures a smooth transition when the P term
                 // decreases enough for the I term to start acting upon the controller
                 // From that point the I term will build up as would be expected
             }
             else if(outputRampRate!=0 && !bounded(output, lastOutput-outputRampRate,lastOutput+outputRampRate) ){
-                errorSum=error;
+                errorSum=error*deltaTime;
             }
             else if(maxIOutput!=0){
-                errorSum=constrain(errorSum+error,-maxError,maxError);
+                errorSum=constrain(errorSum+error*deltaTime,-maxError,maxError);
                 // In addition to output limiting directly, we also want to prevent I term
                 // buildup, so restrict the error directly
             }
             else{
-                errorSum+=error;
+                errorSum+=error*deltaTime;
             }
 
             // Restrict output to our specified output and ramp limits
@@ -349,6 +374,7 @@ public class MiniPID {
             // System.out.printf("%5.2f\t%5.2f\t%5.2f\t%5.2f\n",output,Poutput, Ioutput, Doutput );
 
             lastOutput=output;
+            timer.reset();
             return output;
         }
 
@@ -373,6 +399,8 @@ public class MiniPID {
             setpoint=constrain(setpoint,actual-setpointRange,actual+setpointRange);
         }
 
+        double deltaTime = timer.seconds();
+
         double x = Math.toRadians(actual), //someone else used x in y in their code and
                 // this made it easier for me to figure out which goes where so it's staying
                 y = Math.toRadians(setpoint);
@@ -390,16 +418,23 @@ public class MiniPID {
         // For last output, we can assume it's the current time-independent outputs.
         if(firstRun){
             lastActual=actual;
+            bufferVal.push(error);
             lastOutput=Poutput+Foutput;
+            deltaTime = 1;
+            bufferTime.push(deltaTime);
             firstRun=false;
         }
+
+        bufferAvg = bufferVal.avg();
+        buffer2Avg = bufferTime.avg();
 
         // Calculate D Term
         // Note, this is negative. This actually "slows" the system if it's doing
         // the correct thing, and small values helps prevent output spikes and overshoot
-        Doutput= -D*(actual-lastActual);
+        Doutput= (-D*(error- bufferAvg))/buffer2Avg;
         lastActual=actual;
-
+        bufferVal.push(error);
+        bufferTime.push(deltaTime);
         // The Iterm is more complex. There's several things to factor in to make it easier to deal with.
         // 1. maxIoutput restricts the amount of output contributed by the Iterm.
         // 2. prevent windup by not increasing errorSum if we're already running against our max Ioutput
@@ -414,22 +449,22 @@ public class MiniPID {
 
         // Figure out what we're doing with the error.
         if(minOutput!=maxOutput && !bounded(output, minOutput,maxOutput) ){
-            errorSum=error;
+            errorSum=error*deltaTime;
             // reset the error sum to a sane level
             // Setting to current error ensures a smooth transition when the P term
             // decreases enough for the I term to start acting upon the controller
             // From that point the I term will build up as would be expected
         }
         else if(outputRampRate!=0 && !bounded(output, lastOutput-outputRampRate,lastOutput+outputRampRate) ){
-            errorSum=error;
+            errorSum=error*deltaTime;
         }
         else if(maxIOutput!=0){
-            errorSum=constrain(errorSum+error,-maxError,maxError);
+            errorSum=constrain(errorSum+error*deltaTime,-maxError,maxError);
             // In addition to output limiting directly, we also want to prevent I term
             // buildup, so restrict the error directly
         }
         else{
-            errorSum+=error;
+            errorSum+=error*deltaTime;
         }
 
         // Restrict output to our specified output and ramp limits
@@ -449,6 +484,7 @@ public class MiniPID {
         // System.out.printf("%5.2f\t%5.2f\t%5.2f\t%5.2f\n",output,Poutput, Ioutput, Doutput );
 
         lastOutput=output;
+        timer.reset();
         return output;
     }
 
@@ -596,5 +632,9 @@ public class MiniPID {
                 if(D<0) D*=-1;
                 if(F<0) F*=-1;
             }
+        }
+
+        public double[] getBufferAvgs() {
+            return new double[] {bufferAvg, buffer2Avg};
         }
     }

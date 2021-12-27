@@ -2,7 +2,9 @@ package org.firstinspires.ftc.teamcode.roadrunner.drive;
 
 import androidx.annotation.NonNull;
 
+import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.config.Config;
+import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.acmerobotics.roadrunner.control.PIDCoefficients;
 import com.acmerobotics.roadrunner.control.PIDFController;
 import com.acmerobotics.roadrunner.drive.DriveSignal;
@@ -37,6 +39,7 @@ import org.firstinspires.ftc.teamcode.roadrunner.util.LynxModuleUtil;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 import static org.firstinspires.ftc.teamcode.roadrunner.drive.DriveConstants.MAX_ACCEL;
 import static org.firstinspires.ftc.teamcode.roadrunner.drive.DriveConstants.MAX_ANG_ACCEL;
@@ -68,6 +71,8 @@ public class SampleMecanumDrive extends MecanumDrive {
     public static double FOLLOWER_HEADING_TOLERANCE = Math.toRadians(0.5);
     public static double FOLLOWER_POSITION_TOLERANCE = 0.25;
 
+    public static double HEADING_LOW_PASS_CONSTANT = .75; //1 means fully the current value, 0 means fully the previous value
+
     private TrajectorySequenceRunner trajectorySequenceRunner;
 
     private static final TrajectoryVelocityConstraint VEL_CONSTRAINT = getVelocityConstraint(MAX_VEL, MAX_ANG_VEL, TRACK_WIDTH);
@@ -81,8 +86,18 @@ public class SampleMecanumDrive extends MecanumDrive {
     private BNO055IMU imu, imu1;
     private VoltageSensor batteryVoltageSensor;
 
+    private double lastHeading, lastHeadingVelo, headingAvg, headingVeloAvg;
+
+    private boolean lastHeadingSet, lastHeadingVeloSet;
+
+    FtcDashboard dashboard;
+
+    TelemetryPacket packet = new TelemetryPacket();
+
     public SampleMecanumDrive(HardwareMap hardwareMap) {
         super(kV, kA, kStatic, TRACK_WIDTH, TRACK_WIDTH, LATERAL_MULTIPLIER);
+
+        dashboard = FtcDashboard.getInstance();
 
         follower = new HolonomicPIDVAFollower(TRANSLATIONAL_PID, TRANSLATIONAL_PID, HEADING_PID,
                 new Pose2d(FOLLOWER_POSITION_TOLERANCE, FOLLOWER_POSITION_TOLERANCE, FOLLOWER_HEADING_TOLERANCE), FOLLOWER_TIMEOUT);
@@ -138,6 +153,7 @@ public class SampleMecanumDrive extends MecanumDrive {
         leftRear.setDirection(DcMotorSimple.Direction.REVERSE);
         // TODO: if desired, use setLocalizer() to change the localization method
         // for instance, setLocalizer(new ThreeTrackingWheelLocalizer(...));
+        setLocalizer(new MecanumLocalizer(this, true));
         trajectorySequenceRunner = new TrajectorySequenceRunner(follower, HEADING_PID);
     }
 
@@ -206,6 +222,15 @@ public class SampleMecanumDrive extends MecanumDrive {
         updatePoseEstimate();
         DriveSignal signal = trajectorySequenceRunner.update(getPoseEstimate(), getPoseVelocity());
         if (signal != null) setDriveSignal(signal);
+
+
+        double filteredHeading = getRawExternalHeading();
+        double filteredVelo = getExternalHeadingVelocity();
+        packet.put("Original heading", headingAvg);
+        packet.put("Filtered Heading", filteredHeading);
+        packet.put("Original Velo", headingVeloAvg);
+        packet.put("Filtered Velo", filteredVelo);
+        dashboard.sendTelemetryPacket(packet);
     }
 
     public void waitForIdle() {
@@ -292,7 +317,14 @@ public class SampleMecanumDrive extends MecanumDrive {
 
         Orientation imu = this.imu.getAngularOrientation();
         Orientation imu1 = this.imu1.getAngularOrientation();
-        return Math.atan2(Math.sin(imu.firstAngle) + Math.sin(imu1.firstAngle), Math.cos(imu.firstAngle) + Math.cos(imu1.firstAngle));
+        headingAvg = Math.atan2(Math.sin(imu.firstAngle) + Math.sin(imu1.firstAngle), Math.cos(imu.firstAngle) + Math.cos(imu1.firstAngle));
+        if(!lastHeadingSet) {
+            lastHeading = headingAvg;
+            lastHeadingSet = true;
+        }
+        double lowpassedHeading = HEADING_LOW_PASS_CONSTANT * headingAvg + (1-HEADING_LOW_PASS_CONSTANT) * lastHeading;
+        lastHeading = headingAvg;
+        return lowpassedHeading;
     }
 
     @Override
@@ -315,7 +347,14 @@ public class SampleMecanumDrive extends MecanumDrive {
         // Rotate about the z axis is the default assuming your REV Hub/Control Hub is laying
         // flat on a surface
 
-        return (double) (imu.getAngularVelocity().zRotationRate + imu1.getAngularVelocity().zRotationRate)/2.0;
+        headingVeloAvg = (imu.getAngularVelocity().zRotationRate + imu1.getAngularVelocity().zRotationRate)/2.0;
+        if(!lastHeadingVeloSet) {
+            lastHeadingVelo = headingVeloAvg;
+            lastHeadingVeloSet = true;
+        }
+        double lowPassedHeadingVelo = HEADING_LOW_PASS_CONSTANT * headingVeloAvg + (1-HEADING_LOW_PASS_CONSTANT) * lastHeadingVelo;
+        lastHeadingVelo = headingVeloAvg;
+        return lowPassedHeadingVelo;
     }
 
     public static TrajectoryVelocityConstraint getVelocityConstraint(double maxVel, double maxAngularVel, double trackWidth) {
@@ -344,5 +383,9 @@ public class SampleMecanumDrive extends MecanumDrive {
     public void cancel() {
         trajectorySequenceRunner.cancel();
         setMotorPowers(0,0,0,0);
+    }
+
+    public void addTelemetry(Map<String, Object> map) {
+        this.packet.putAll(map);
     }
 }

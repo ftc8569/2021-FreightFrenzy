@@ -7,17 +7,16 @@ import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
-import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
+import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
-import org.firstinspires.ftc.robotcore.internal.tfod.Timer;
 import org.firstinspires.ftc.teamcode.Controllers.ArmController;
-import org.firstinspires.ftc.teamcode.Controllers.ArmHardware;
 import org.firstinspires.ftc.teamcode.Controllers.ArmHardware2021;
-import org.firstinspires.ftc.teamcode.Controllers.MiniPID;
 import org.firstinspires.ftc.teamcode.Controllers.TeleopHeadingDriftController;
 import org.firstinspires.ftc.teamcode.roadrunner.drive.SampleMecanumDrive;
+
+import java.util.HashMap;
 
 @Config
 @TeleOp(name = "TeleopV1", group = "Development")
@@ -32,11 +31,14 @@ public class TeleOPV1 extends OpMode {
                          armStartPos = 0,
                          armTopPos = 1140 - 20,
                          armMiddlePos = 1510 - 20,
-                         armBottomPos = 1740 - 20;
+                         armBottomPos = 1620 - 20,
+                         odometryDownPos = (.125 /270.0)*360,
+                         odometryUpPos = 0 /270.0;
 
-    public static PIDFCoefficients pidfCoefficients = new PIDFCoefficients(.015, 0, 0, 0);
+    public static PIDFCoefficients headingControllerCoefficients = new PIDFCoefficients(.015, 0, 0, 0);
+
     //testing this
-    public static double outputFilter = 0.1;
+    public static double outputFilter = 0.2, outputRamp = .05;
 
     public static DcMotor.RunMode armMode = DcMotor.RunMode.RUN_TO_POSITION;
 
@@ -44,6 +46,7 @@ public class TeleOPV1 extends OpMode {
     private static boolean duckWheelOn = false;
     private static boolean intakeReverse = false;
     private static boolean rumbled = false;
+    private static boolean odoUp = false;
     private static final boolean driftController = true;
 
 
@@ -58,7 +61,11 @@ public class TeleOPV1 extends OpMode {
 
     ArmController armController;
 
-    boolean isRed;
+    Servo odometryServo, odometryServo1;
+
+    ElapsedTime odoTimer = new ElapsedTime();
+
+    double driveOffset = 0, duckDirection = 1;
 
 
     @Override
@@ -66,7 +73,22 @@ public class TeleOPV1 extends OpMode {
         telemetry.addData(">", "Initializing...");
         telemetry.update();
 
-        isRed = PoseStorage.alliance == PoseStorage.Alliance.RED;
+        switch (PoseStorage.alliance) {
+            case RED:
+                driveOffset = -90;
+                duckDirection = -1;
+                break;
+
+            case BLUE:
+                driveOffset = 90;
+                duckDirection = 1;
+                break;
+
+            case NEITHER:
+                driveOffset = 0;
+                duckDirection = 1;
+                break;
+        }
 
         drive = new SampleMecanumDrive(hardwareMap);
 
@@ -82,8 +104,14 @@ public class TeleOPV1 extends OpMode {
         intakeMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         intakeMotor.setPower(0);
 
-        controller = new TeleopHeadingDriftController(3.5, .125, pidfCoefficients);
-        controller.setOutputScale(.5);
+        controller = new TeleopHeadingDriftController(.5, .125, headingControllerCoefficients, 3);
+        controller.setOutputScale(.6);
+
+        odometryServo = hardwareMap.get(Servo.class, "odometryServo");
+        odometryServo.setPosition(odometryUpPos);
+
+        odometryServo1 = hardwareMap.get(Servo.class, "odometryServo1");
+        odometryServo1.setPosition(odometryUpPos);
 
         armController = new ArmController(ArmHardware2021.class, hardwareMap, armMode);
 
@@ -101,18 +129,20 @@ public class TeleOPV1 extends OpMode {
         drive.update();
         Pose2d pose = drive.getPoseEstimate();
         long millis = System.currentTimeMillis();
-        controller.setPIDF(pidfCoefficients);
+        controller.setPIDF(headingControllerCoefficients);
         controller.setOutputFilter(outputFilter);
+        controller.setRamping(outputRamp);
 
         if(this.gamepad1.y) {
             drive.setPoseEstimate(new Pose2d(pose.getX(),pose.getY(),0));
             controller.reset(drive.getPoseEstimate());
         }
 
-//        if(Math.abs(gamepad1.right_stick_y) > .05 || Math.abs(gamepad1.right_stick_x) > .05) {
-//            double desAng = Math.atan2(-gamepad2.right_stick_y, gamepad2.right_stick_x);
-//            controller.setTargetPose(desAng);
-//        }
+        if(Math.abs(gamepad1.right_stick_y) > .05 || Math.abs(gamepad1.right_stick_x) > .05) {
+            double desAng = Math.atan2(-gamepad1.right_stick_y, gamepad1.right_stick_x);
+            telemetry.addData("Desired Angle deg", Math.toDegrees(desAng));
+            controller.setTargetPose(desAng);
+        }
 
         if(controller.getEnabled() != driftController) {
             controller.setEnabled(driftController);
@@ -121,7 +151,7 @@ public class TeleOPV1 extends OpMode {
             Vector2d input = new Vector2d(
                     expTranslation ? Math.pow(gamepad1.left_stick_y,driveExp) * Math.signum(-gamepad1.left_stick_y):-gamepad1.left_stick_y,
                     expTranslation ? Math.pow(gamepad1.left_stick_x,driveExp) * Math.signum(-gamepad1.left_stick_x):-gamepad1.left_stick_x
-            ).rotated(-pose.getHeading() + Math.toDegrees(isRed ? 90 : -90));
+            ).rotated(-pose.getHeading() + Math.toDegrees(driveOffset));
             double rotation = Math.pow(gamepad1.left_trigger,driveExp) - Math.pow(gamepad1.right_trigger,driveExp);
             power = new Pose2d(input.getX(),input.getY(), rotation);
             telemetry.addData("Input Power", power.toString());
@@ -139,6 +169,15 @@ public class TeleOPV1 extends OpMode {
         telemetry.addData("Controlled Power", "(%.3f, %.3f, %.3f°)", controlled.getX(), controlled.getY(), controlled.getHeading());
 //        drive.setWeightedDrivePower(power);
 
+        HashMap<String, Object> map = new HashMap<>();
+        map.put("Setpoint", Math.toRadians(controller.getTargetPose()));
+        map.put("error", Math.toRadians(controller.getError()));
+        map.put("lastOutput", controller.getLastOutput());
+        double[] avgs = controller.getBufferAvgs();
+        map.put("BufferVal avg", avgs[0]);
+        map.put("BufferTime avg", avgs[1]);
+        drive.addTelemetry(map);
+
         if(gamepad1.right_bumper && millis - intakeStartTime > 500) {
             intakeOn = !intakeOn;
             intakeStartTime = millis;
@@ -148,17 +187,18 @@ public class TeleOPV1 extends OpMode {
             duckWheelStartTime = millis;
         }
 
-        if (Math.abs(gamepad1.right_stick_y) > .05) {
-            if(armMode != DcMotor.RunMode.RUN_USING_ENCODER) {
-                armMode = DcMotor.RunMode.RUN_USING_ENCODER;
-                armController.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-            }
-                armController.setPower(-gamepad1.right_stick_y);
-        } else if(gamepad1.dpad_right || gamepad1.dpad_left || gamepad1.dpad_up || gamepad1.dpad_down){
-            if(armMode != DcMotor.RunMode.RUN_TO_POSITION) {
-                armMode = DcMotor.RunMode.RUN_TO_POSITION;
-                armController.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            }
+//        if (Math.abs(gamepad1.right_stick_y) > .05) {
+//            if(armMode != DcMotor.RunMode.RUN_USING_ENCODER) {
+//                armMode = DcMotor.RunMode.RUN_USING_ENCODER;
+//                armController.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+//            }
+//                armController.setPower(-gamepad1.right_stick_y);
+//        } else
+            if(gamepad1.dpad_right || gamepad1.dpad_left || gamepad1.dpad_up || gamepad1.dpad_down){
+                if(armMode != DcMotor.RunMode.RUN_TO_POSITION) {
+                    armMode = DcMotor.RunMode.RUN_TO_POSITION;
+                    armController.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+                }
             armController.setPower(ArmController.armSetPosPower);
             if(gamepad1.dpad_up) armController.setPosition((int) armTopPos);
             if(gamepad1.dpad_left) armController.setPosition((int) armMiddlePos);
@@ -170,9 +210,25 @@ public class TeleOPV1 extends OpMode {
 
         if(intakeOn) intakeMotor.setPower(intakeReverse ? -intakeSpeed * .25: intakeSpeed); else intakeMotor.setPower(0);
         if(duckWheelOn) {
-            duckWheelMotor.setPower(duckWheelSpeed * (isRed ? -1 : 1));
-            duckWheelMotor2.setPower(duckWheelSpeed * (isRed ? -1 : 1));
-        } else duckWheelMotor.setPower(0);
+            duckWheelMotor.setPower(duckWheelSpeed * duckDirection);
+            duckWheelMotor2.setPower(duckWheelSpeed * duckDirection);
+        } else {
+            duckWheelMotor.setPower(0);
+            duckWheelMotor2.setPower(0);
+        }
+
+        if(gamepad1.x && odoTimer.seconds() > .5) {
+            odoTimer.reset();
+            if(odoUp) {
+                odometryServo1.setPosition(odometryDownPos);
+                odometryServo.setPosition(odometryDownPos);
+                odoUp = false;
+            } else {
+                odometryServo1.setPosition(odometryUpPos);
+                odometryServo.setPosition(odometryUpPos);
+                odoUp = true;
+            }
+        }
 //        if(gamepad1.a && !rumbled) {
 //            gamepad1.rumble(1.0, 1.0, Gamepad.RUMBLE_DURATION_CONTINUOUS);
 //            rumbled = true;

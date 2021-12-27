@@ -55,15 +55,15 @@ public class RedDuckAutoV1 extends TeleOPV1 {
                 .build();
 
         toDuck2 = drive.trajectoryBuilder(toDuck.end())
-                .back(8.5, SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL*.5, DriveConstants.MAX_ANG_VEL, DriveConstants.TRACK_WIDTH),
+                .back(6.75, SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL*.5, DriveConstants.MAX_ANG_VEL, DriveConstants.TRACK_WIDTH),
                         SampleMecanumDrive.getAccelerationConstraint(DriveConstants.MAX_ACCEL))
-                .back(2, SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL*.2, DriveConstants.MAX_ANG_VEL, DriveConstants.TRACK_WIDTH),
+                .back(2, SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL*.165, DriveConstants.MAX_ANG_VEL, DriveConstants.TRACK_WIDTH),
                         SampleMecanumDrive.getAccelerationConstraint(DriveConstants.MAX_ACCEL))
                 .build();
 
         toHub = drive.trajectoryBuilder(toDuck2.end())
-                .lineToConstantHeading(new Vector2d(-66, -46))
-                .splineToSplineHeading(new Pose2d(-36, -46, Math.toRadians(180)), Math.toRadians(0))
+                .lineToConstantHeading(new Vector2d(-66, -43.5))
+                .splineToSplineHeading(new Pose2d(-36, -43.5, Math.toRadians(180)), Math.toRadians(0))
                 .build();
 
         toDepot = drive.trajectoryBuilder(toHub.end())
@@ -72,7 +72,7 @@ public class RedDuckAutoV1 extends TeleOPV1 {
                 .build();
 
         toDepot2 = drive.trajectoryBuilder(toDepot.end())
-                .forward(25)
+                .forward(21)
                 .build();
 
         telemetry.addData(">", "Actually Initialized!!!");
@@ -131,7 +131,7 @@ public class RedDuckAutoV1 extends TeleOPV1 {
                 if(!drive.isBusy()) {
                     armController.setPower(0);
                     PoseStorage.endPose = drive.getPoseEstimate();
-//                    requestOpModeStop();
+                    requestOpModeStop();
                 }
             }
             break;

@@ -15,12 +15,12 @@ import org.opencv.core.Mat;
 
 import java.util.HashMap;
 
-@Autonomous
-public class BlueDuckAutoV1 extends TeleOPV1 {
+@Autonomous(preselectTeleOp = "TeleOPV1")
+public class RedWarehouseSpeedrun extends TeleOPV1 {
 
     public HashMap<String, Trajectory> segments = new HashMap<>();
 
-    public static Pose2d startPose = new Pose2d(-38.5, 83, Math.toRadians(-90));
+    public static Pose2d startPose = new Pose2d(-38.5, -83, Math.toRadians(180));
 
     public static Trajectory toDuck, toDuck2, toHub, toDepot, toDepot2;
 
@@ -41,7 +41,7 @@ public class BlueDuckAutoV1 extends TeleOPV1 {
     public void init() {
         super.init();
 
-        PoseStorage.alliance = PoseStorage.Alliance.BLUE;
+        PoseStorage.alliance = PoseStorage.Alliance.RED;
 
         drive.setPoseEstimate(startPose);
 
@@ -49,30 +49,28 @@ public class BlueDuckAutoV1 extends TeleOPV1 {
         armController.setPower(ArmController.armSetPosPower);
 
         toDuck = drive.trajectoryBuilder(startPose)
-                .splineToConstantHeading(new Vector2d(-69, 78), Math.toRadians(180))
-                .addDisplacementMarker(() -> duckWheelMotor.setPower(duckWheelSpeed * (PoseStorage.alliance == PoseStorage.Alliance.BLUE ? 1 : -1)))
-                .addDisplacementMarker(() -> drive.followTrajectoryAsync(toDuck2))
+                .back(35)
                 .build();
 
         toDuck2 = drive.trajectoryBuilder(toDuck.end())
-                .back(6.75, SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL*.5, DriveConstants.MAX_ANG_VEL, DriveConstants.TRACK_WIDTH),
+                .back(8.5, SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL*.5, DriveConstants.MAX_ANG_VEL, DriveConstants.TRACK_WIDTH),
                         SampleMecanumDrive.getAccelerationConstraint(DriveConstants.MAX_ACCEL))
-                .back(2, SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL*.165, DriveConstants.MAX_ANG_VEL, DriveConstants.TRACK_WIDTH),
+                .back(2, SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL*.2, DriveConstants.MAX_ANG_VEL, DriveConstants.TRACK_WIDTH),
                         SampleMecanumDrive.getAccelerationConstraint(DriveConstants.MAX_ACCEL))
                 .build();
 
         toHub = drive.trajectoryBuilder(toDuck2.end())
-                .lineToConstantHeading(new Vector2d(-66, 52))
-                .splineToSplineHeading(new Pose2d(-36, 52, Math.toRadians(180)), Math.toRadians(0))
+                .lineToConstantHeading(new Vector2d(-66, -46))
+                .splineToSplineHeading(new Pose2d(-36, -46, Math.toRadians(180)), Math.toRadians(0))
                 .build();
 
         toDepot = drive.trajectoryBuilder(toHub.end())
-                .splineToLinearHeading(new Pose2d(-72, 42, Math.toRadians(90)), Math.toRadians(180))
+                .splineToLinearHeading(new Pose2d(-72, -37, Math.toRadians(-90)), Math.toRadians(180))
                 .addDisplacementMarker(() -> drive.followTrajectoryAsync(toDepot2))
                 .build();
 
         toDepot2 = drive.trajectoryBuilder(toDepot.end())
-                .forward(27)
+                .forward(25)
                 .build();
 
         telemetry.addData(">", "Actually Initialized!!!");
@@ -85,6 +83,7 @@ public class BlueDuckAutoV1 extends TeleOPV1 {
         telemetry.addData("Busy?", drive.isBusy());
         telemetry.addData("State", state.toString());
 
+        PoseStorage.endPose = drive.getPoseEstimate();
         switch(state){
             case init: {
                 drive.followTrajectoryAsync(toDuck);
@@ -94,48 +93,10 @@ public class BlueDuckAutoV1 extends TeleOPV1 {
 
             case toDuck: {
                 if(!drive.isBusy()) {
-                    state = State.spinDuck;
-                    duckSpinTimer = System.currentTimeMillis();
-                }
-            }
-            break;
-//
-            case spinDuck: {
-                if(System.currentTimeMillis() - duckSpinTimer > duckSpinTime) {
-                    duckWheelMotor.setPower(0);
-                    drive.followTrajectoryAsync(toHub);
-                    intakeMotor.setPower(intakeSpeed);
-                    state = State.toHub;
-                }
-            }
-            break;
-
-            case toHub: {
-                if(!drive.isBusy()) {
-                    armController.setPosition((int) armTopPos);
-                    state = State.deposit;
-                }
-            }
-            break;
-
-            case deposit: {
-                if(Math.abs(armController.getPosition() - armTopPos) < ArmHardware2021.targetPosTolerance) {
-                    armController.setPosition((int) armStartPos);
-                    intakeMotor.setPower(0);
-                    drive.followTrajectoryAsync(toDepot);
-                    state = State.toDepot;
-                }
-            }
-            break;
-
-            case toDepot: {
-                if(!drive.isBusy()) {
-                    armController.setPower(0);
-                    PoseStorage.endPose = drive.getPoseEstimate();
                     requestOpModeStop();
                 }
             }
             break;
-        }
-    }
-}
+//
+    }}}
+

@@ -22,13 +22,14 @@ public class TeleopHeadingDriftController {
     long stoppedTurning = 0;
     boolean timerstarted = false;
     boolean firstStart = true;
+    double output;
     MiniPID pid;
 
 
-    public TeleopHeadingDriftController(double poseTolerance, double outputDeadzone, PIDFCoefficients pid) {
+    public TeleopHeadingDriftController(double poseTolerance, double outputDeadzone, PIDFCoefficients pid, int bufferSize) {
         this.poseTolerance = poseTolerance;
         this.pidfCoefficients = pid;
-        this.pid = new MiniPID(pid);
+        this.pid = new MiniPID(pid, bufferSize);
         this.outputDeadzone = outputDeadzone;
     }
 
@@ -62,7 +63,7 @@ public class TeleopHeadingDriftController {
                         return drivePower;
                     }
                 } else {
-                    double output = pid.getOutputAngles(Math.toDegrees(currentPose.getHeading()), Math.toDegrees(targetPose.getHeading()));
+                    output = pid.getOutputAngles(Math.toDegrees(currentPose.getHeading()), Math.toDegrees(targetPose.getHeading()));
                     if(Math.abs(output) >= outputDeadzone) {
                         if (Math.abs(pid.getError()) >= poseTolerance)
                             return drivePower.minus(new Pose2d(0, 0, output));
@@ -87,7 +88,10 @@ public class TeleopHeadingDriftController {
        return pid.getSetpoint();
     }
 
-    public void setTargetPose(double targetPose) {this.targetPose = new Pose2d(0, 0, targetPose);}
+    public void setTargetPose(double targetPose) {
+        this.targetPose = new Pose2d(0, 0, targetPose);
+        pid.setSetpoint(this.targetPose.getHeading());
+    }
 
     public double getTargetPose() {
         return Math.toDegrees(targetPose.getHeading());
@@ -124,4 +128,18 @@ public class TeleopHeadingDriftController {
     public void setOutputFilter(double filter) {
         pid.setOutputFilter(filter);
     }
+
+    public double getLastOutput() {
+        return output;
+    }
+
+    public void setRamping(double val) {
+        pid.setOutputRampRate(val);
+    }
+
+    public double[] getBufferAvgs() {
+        return pid.getBufferAvgs();
+    }
 }
+
+
