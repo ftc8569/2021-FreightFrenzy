@@ -3,16 +3,24 @@ package org.firstinspires.ftc.teamcode.Development;
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.roadrunner.geometry.Pose2d;
 import com.acmerobotics.roadrunner.geometry.Vector2d;
+import com.qualcomm.hardware.modernrobotics.ModernRoboticsAnalogOpticalDistanceSensor;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DigitalChannel;
+import com.qualcomm.robotcore.hardware.DigitalChannelImpl;
+import com.qualcomm.robotcore.hardware.DistanceSensor;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.hardware.configuration.typecontainers.AnalogSensorConfigurationType;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.teamcode.Controllers.ArmController;
 import org.firstinspires.ftc.teamcode.Controllers.ArmHardware2021;
+import org.firstinspires.ftc.teamcode.Controllers.MaxBoticsMB1040;
 import org.firstinspires.ftc.teamcode.Controllers.TeleopHeadingDriftController;
 import org.firstinspires.ftc.teamcode.roadrunner.drive.SampleMecanumDrive;
 
@@ -32,13 +40,15 @@ public class TeleOPV1 extends OpMode {
                          armTopPos = 1140 - 20,
                          armMiddlePos = 1510 - 20,
                          armBottomPos = 1620 - 20,
-                         odometryDownPos = (.125 /270.0)*360,
-                         odometryUpPos = 0 /270.0;
+                         odometryDownPos = .3,
+                         odometryUpPos = .05,
+                         armServoShutPos = 0,
+                         armServoOpenPos = .2;
 
-    public static PIDFCoefficients headingControllerCoefficients = new PIDFCoefficients(.015, 0, 0, 0);
+    public static PIDFCoefficients headingControllerCoefficients = new PIDFCoefficients(.011, 0, 0.001, 0);
 
     //testing this
-    public static double outputFilter = 0.2, outputRamp = .05;
+    public static double outputFilter = 0.15, outputRamp = .1;
 
     public static DcMotor.RunMode armMode = DcMotor.RunMode.RUN_TO_POSITION;
 
@@ -46,7 +56,7 @@ public class TeleOPV1 extends OpMode {
     private static boolean duckWheelOn = false;
     private static boolean intakeReverse = false;
     private static boolean rumbled = false;
-    private static boolean odoUp = false;
+    private static boolean odoUp = false, armServoShut = true;
     private static final boolean driftController = true;
 
 
@@ -61,12 +71,13 @@ public class TeleOPV1 extends OpMode {
 
     ArmController armController;
 
-    Servo odometryServo, odometryServo1;
+    Servo odometryServo, odometryServo1, armServo;
 
-    ElapsedTime odoTimer = new ElapsedTime();
+    ElapsedTime odoTimer = new ElapsedTime(), armServoTimer = new ElapsedTime();
 
     double driveOffset = 0, duckDirection = 1;
 
+    MaxBoticsMB1040 distanceSensor;
 
     @Override
     public void init() {
@@ -104,16 +115,24 @@ public class TeleOPV1 extends OpMode {
         intakeMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         intakeMotor.setPower(0);
 
-        controller = new TeleopHeadingDriftController(.5, .125, headingControllerCoefficients, 3);
+        distanceSensor = new MaxBoticsMB1040(hardwareMap.get(AnalogInput.class, "distanceSensor"));
+
+        controller = new TeleopHeadingDriftController(1.25, .05, headingControllerCoefficients, 3);
         controller.setOutputScale(.6);
 
         odometryServo = hardwareMap.get(Servo.class, "odometryServo");
-        odometryServo.setPosition(odometryUpPos);
+        odometryServo.setPosition(odometryDownPos);
 
         odometryServo1 = hardwareMap.get(Servo.class, "odometryServo1");
-        odometryServo1.setPosition(odometryUpPos);
+        odometryServo1.setPosition(odometryDownPos);
+
+        armServo = hardwareMap.get(Servo.class, "armServo");
+        armServo.setPosition(armServoShutPos);
 
         armController = new ArmController(ArmHardware2021.class, hardwareMap, armMode);
+
+        DigitalChannelImpl digitalChannel1 = (DigitalChannelImpl) hardwareMap.digitalChannel.get("fjdshhjs");
+        digitalChannel1.setMode(DigitalChannel.Mode.OUTPUT);
 
         telemetry.addData(">", "Initialized!!!");
         telemetry.update();
@@ -176,6 +195,8 @@ public class TeleOPV1 extends OpMode {
         double[] avgs = controller.getBufferAvgs();
         map.put("BufferVal avg", avgs[0]);
         map.put("BufferTime avg", avgs[1]);
+        map.put("Distance Sensor", distanceSensor.getDistance(DistanceUnit.INCH));
+        telemetry.addData("Distance Sensor", distanceSensor.getDistance(DistanceUnit.INCH));
         drive.addTelemetry(map);
 
         if(gamepad1.right_bumper && millis - intakeStartTime > 500) {
@@ -228,6 +249,12 @@ public class TeleOPV1 extends OpMode {
                 odometryServo.setPosition(odometryUpPos);
                 odoUp = true;
             }
+        }
+
+        if(gamepad1.a && armServoTimer.seconds() > .5) {
+            armServo.setPosition(armServoShut ? armServoOpenPos : armServoShutPos);
+            armServoShut = ! armServoShut;
+            armServoTimer.reset();
         }
 //        if(gamepad1.a && !rumbled) {
 //            gamepad1.rumble(1.0, 1.0, Gamepad.RUMBLE_DURATION_CONTINUOUS);

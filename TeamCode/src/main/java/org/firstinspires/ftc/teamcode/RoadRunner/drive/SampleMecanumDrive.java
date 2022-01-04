@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.roadrunner.drive;
 
+import android.annotation.SuppressLint;
+
 import androidx.annotation.NonNull;
 
 import com.acmerobotics.dashboard.FtcDashboard;
@@ -12,6 +14,7 @@ import com.acmerobotics.roadrunner.drive.MecanumDrive;
 import com.acmerobotics.roadrunner.followers.HolonomicPIDVAFollower;
 import com.acmerobotics.roadrunner.followers.TrajectoryFollower;
 import com.acmerobotics.roadrunner.geometry.Pose2d;
+import com.acmerobotics.roadrunner.localization.Localizer;
 import com.acmerobotics.roadrunner.trajectory.Trajectory;
 import com.acmerobotics.roadrunner.trajectory.TrajectoryBuilder;
 import com.acmerobotics.roadrunner.trajectory.constraints.AngularVelocityConstraint;
@@ -94,6 +97,8 @@ public class SampleMecanumDrive extends MecanumDrive {
 
     TelemetryPacket packet = new TelemetryPacket();
 
+    TwoWheelTrackingLocalizer localizer;
+
     public SampleMecanumDrive(HardwareMap hardwareMap) {
         super(kV, kA, kStatic, TRACK_WIDTH, TRACK_WIDTH, LATERAL_MULTIPLIER);
 
@@ -153,7 +158,9 @@ public class SampleMecanumDrive extends MecanumDrive {
         leftRear.setDirection(DcMotorSimple.Direction.REVERSE);
         // TODO: if desired, use setLocalizer() to change the localization method
         // for instance, setLocalizer(new ThreeTrackingWheelLocalizer(...));
-        setLocalizer(new MecanumLocalizer(this, true));
+//        setLocalizer(new MecanumLocalizer(this, true));
+        localizer = new TwoWheelTrackingLocalizer(hardwareMap, this);
+        setLocalizer(localizer);
         trajectorySequenceRunner = new TrajectorySequenceRunner(follower, HEADING_PID);
     }
 
@@ -218,6 +225,7 @@ public class SampleMecanumDrive extends MecanumDrive {
         return trajectorySequenceRunner.getLastPoseError();
     }
 
+    @SuppressLint("DefaultLocale")
     public void update() {
         updatePoseEstimate();
         DriveSignal signal = trajectorySequenceRunner.update(getPoseEstimate(), getPoseVelocity());
@@ -230,6 +238,7 @@ public class SampleMecanumDrive extends MecanumDrive {
         packet.put("Filtered Heading", filteredHeading);
         packet.put("Original Velo", headingVeloAvg);
         packet.put("Filtered Velo", filteredVelo);
+        packet.put("wheel positions", String.format("Parallel %.2f, Perpendicular %.2f", localizer.getWheelPositions().get(0), localizer.getWheelPositions().get(1)));
         dashboard.sendTelemetryPacket(packet);
     }
 
@@ -388,4 +397,6 @@ public class SampleMecanumDrive extends MecanumDrive {
     public void addTelemetry(Map<String, Object> map) {
         this.packet.putAll(map);
     }
+
+
 }

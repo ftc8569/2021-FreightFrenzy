@@ -9,9 +9,12 @@ public class RingBuffer {
     private double[] buffer;
     private int pushes = 0;
 
+
     public RingBuffer(int capacity) {
         buffer = new double[capacity];
     }
+
+
 
     public void push(double value) {
         double[] oldBuffer = buffer;
