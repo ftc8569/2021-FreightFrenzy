@@ -7,6 +7,8 @@ import com.qualcomm.robotcore.hardware.LED;
 import com.qualcomm.robotcore.hardware.configuration.typecontainers.DigitalIoDeviceConfigurationType;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+
 
 public class MaxBoticsArray {
     private MaxBoticsMB1040 frontSensor, backSensor, leftSensor, rightSensor;
@@ -30,5 +32,17 @@ public class MaxBoticsArray {
         }
         startPin.setState(false);
         startPin.setMode(DigitalChannel.Mode.INPUT);
+    }
+
+    public double[] getDistances(DistanceUnit unit) {
+        return new double[]{frontSensor.getDistance(unit), backSensor.getDistance(unit), leftSensor.getDistance(unit), rightSensor.getDistance(unit)};
+    }
+
+    public MaxBoticsMB1040[] getSensors() {
+        return new MaxBoticsMB1040[]{frontSensor, backSensor, leftSensor, rightSensor};
+    }
+
+    public DigitalChannelImpl getStartPin() {
+        return startPin;
     }
 }

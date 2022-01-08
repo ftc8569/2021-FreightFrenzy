@@ -8,13 +8,11 @@ import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.acmerobotics.roadrunner.control.PIDCoefficients;
-import com.acmerobotics.roadrunner.control.PIDFController;
 import com.acmerobotics.roadrunner.drive.DriveSignal;
 import com.acmerobotics.roadrunner.drive.MecanumDrive;
 import com.acmerobotics.roadrunner.followers.HolonomicPIDVAFollower;
 import com.acmerobotics.roadrunner.followers.TrajectoryFollower;
 import com.acmerobotics.roadrunner.geometry.Pose2d;
-import com.acmerobotics.roadrunner.localization.Localizer;
 import com.acmerobotics.roadrunner.trajectory.Trajectory;
 import com.acmerobotics.roadrunner.trajectory.TrajectoryBuilder;
 import com.acmerobotics.roadrunner.trajectory.constraints.AngularVelocityConstraint;
@@ -25,15 +23,22 @@ import com.acmerobotics.roadrunner.trajectory.constraints.TrajectoryAcceleration
 import com.acmerobotics.roadrunner.trajectory.constraints.TrajectoryVelocityConstraint;
 import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.hardware.lynx.LynxModule;
+import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.DigitalChannelImpl;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 import com.qualcomm.robotcore.hardware.configuration.typecontainers.MotorConfigurationType;
 
 import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
+import org.firstinspires.ftc.teamcode.Controllers.DistanceSensorArrayLocalizer;
+import org.firstinspires.ftc.teamcode.Controllers.MaxBoticsArray;
+import org.firstinspires.ftc.teamcode.Controllers.MaxBoticsMB1040;
+import org.firstinspires.ftc.teamcode.Controllers.OdoMechDistLocalizer;
+import org.firstinspires.ftc.teamcode.Controllers.OdoRetractionController;
 import org.firstinspires.ftc.teamcode.roadrunner.trajectorysequence.TrajectorySequence;
 import org.firstinspires.ftc.teamcode.roadrunner.trajectorysequence.TrajectorySequenceBuilder;
 import org.firstinspires.ftc.teamcode.roadrunner.trajectorysequence.TrajectorySequenceRunner;
@@ -97,7 +102,11 @@ public class SampleMecanumDrive extends MecanumDrive {
 
     TelemetryPacket packet = new TelemetryPacket();
 
-    TwoWheelTrackingLocalizer localizer;
+    TwoWheelTrackingLocalizer odolocalizer;
+    MecanumLocalizer wheelLocalizer;
+    DistanceSensorArrayLocalizer distLocalizer;
+    OdoMechDistLocalizer localizer;
+    OdoRetractionController retractionController;
 
     public SampleMecanumDrive(HardwareMap hardwareMap) {
         super(kV, kA, kStatic, TRACK_WIDTH, TRACK_WIDTH, LATERAL_MULTIPLIER);
@@ -153,13 +162,34 @@ public class SampleMecanumDrive extends MecanumDrive {
             setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, MOTOR_VELO_PID);
         }
 
+        AnalogInput front = hardwareMap.get(AnalogInput.class, "frontSensor");
+        MaxBoticsMB1040 frontSensor = new MaxBoticsMB1040(front);
+        AnalogInput back = hardwareMap.get(AnalogInput.class, "frontSensor");
+        MaxBoticsMB1040 backSensor = new MaxBoticsMB1040(back);
+        AnalogInput left = hardwareMap.get(AnalogInput.class, "leftSensor");
+        MaxBoticsMB1040 leftSensor = new MaxBoticsMB1040(left);
+        AnalogInput right = hardwareMap.get(AnalogInput.class, "rightSensor");
+        MaxBoticsMB1040 rightSensor = new MaxBoticsMB1040(right);
+
+        DigitalChannelImpl start = hardwareMap.get(DigitalChannelImpl.class, "start");
+
+        MaxBoticsArray array = new MaxBoticsArray(start, front, back, left, right);
+
+        retractionController = new OdoRetractionController(hardwareMap);
+
+        distLocalizer = new DistanceSensorArrayLocalizer(array);
+        wheelLocalizer = new MecanumLocalizer(this, true);
+        odolocalizer = new TwoWheelTrackingLocalizer(hardwareMap, this);
+
+        localizer = new OdoMechDistLocalizer(this, hardwareMap, odolocalizer, wheelLocalizer, distLocalizer, retractionController);
+
+
         // TODO: reverse any motors using DcMotor.setDirection()
         leftFront.setDirection(DcMotorSimple.Direction.REVERSE);
         leftRear.setDirection(DcMotorSimple.Direction.REVERSE);
         // TODO: if desired, use setLocalizer() to change the localization method
         // for instance, setLocalizer(new ThreeTrackingWheelLocalizer(...));
 //        setLocalizer(new MecanumLocalizer(this, true));
-        localizer = new TwoWheelTrackingLocalizer(hardwareMap, this);
         setLocalizer(localizer);
         trajectorySequenceRunner = new TrajectorySequenceRunner(follower, HEADING_PID);
     }
@@ -238,7 +268,7 @@ public class SampleMecanumDrive extends MecanumDrive {
         packet.put("Filtered Heading", filteredHeading);
         packet.put("Original Velo", headingVeloAvg);
         packet.put("Filtered Velo", filteredVelo);
-        packet.put("wheel positions", String.format("Parallel %.2f, Perpendicular %.2f", localizer.getWheelPositions().get(0), localizer.getWheelPositions().get(1)));
+        packet.put("wheel positions", String.format("Parallel %.2f, Perpendicular %.2f", odolocalizer.getWheelPositions().get(0), odolocalizer.getWheelPositions().get(1)));
         dashboard.sendTelemetryPacket(packet);
     }
 
@@ -398,5 +428,8 @@ public class SampleMecanumDrive extends MecanumDrive {
         this.packet.putAll(map);
     }
 
+    public void setOdometry(boolean up) {
+        retractionController.set(up);
+    }
 
 }

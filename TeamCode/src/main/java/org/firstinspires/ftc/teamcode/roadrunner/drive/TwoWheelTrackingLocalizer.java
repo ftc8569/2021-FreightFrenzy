@@ -1,9 +1,6 @@
 package org.firstinspires.ftc.teamcode.roadrunner.drive;
 
-import android.os.Build;
-
 import androidx.annotation.NonNull;
-import androidx.annotation.RequiresApi;
 
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.roadrunner.geometry.Pose2d;
@@ -15,8 +12,6 @@ import org.firstinspires.ftc.teamcode.roadrunner.util.Encoder;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.DoubleBinaryOperator;
-import java.util.function.DoubleSupplier;
 
 /*
  * Sample tracking wheel localizer implementation assuming the standard configuration:

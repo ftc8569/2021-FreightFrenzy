@@ -6,12 +6,10 @@ import com.acmerobotics.roadrunner.trajectory.Trajectory;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.hardware.DcMotor;
 
-import org.firstinspires.ftc.robotcore.internal.camera.libuvc.api.UvcApiExposureControl;
 import org.firstinspires.ftc.teamcode.Controllers.ArmController;
 import org.firstinspires.ftc.teamcode.Controllers.ArmHardware2021;
 import org.firstinspires.ftc.teamcode.roadrunner.drive.DriveConstants;
 import org.firstinspires.ftc.teamcode.roadrunner.drive.SampleMecanumDrive;
-import org.opencv.core.Mat;
 
 import java.util.HashMap;
 

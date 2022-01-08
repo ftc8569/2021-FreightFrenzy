@@ -69,8 +69,8 @@ public class MiniPID {
          */
         public MiniPID(double p, double i, double d, int bufferSize){
             P=p; I=i; D=d;
-            bufferVal = new RingBuffer(bufferSize);
-            bufferTime = new RingBuffer(bufferSize);
+            bufferVal = new RingBuffer(bufferSize, Double.class);
+            bufferTime = new RingBuffer(bufferSize, Double.class);
             timer = new ElapsedTime();
             checkSigns();
         }
@@ -85,16 +85,16 @@ public class MiniPID {
          */
         public MiniPID(double p, double i, double d, double f, int bufferSize){
             P=p; I=i; D=d; F=f;
-            bufferVal = new RingBuffer(bufferSize);
-            bufferTime = new RingBuffer(bufferSize);
+            bufferVal = new RingBuffer(bufferSize, Double.class);
+            bufferTime = new RingBuffer(bufferSize, Double.class);
             timer = new ElapsedTime();
             checkSigns();
         }
 
         public MiniPID(PIDFCoefficients pidf, int bufferSize) {
             P= pidf.p; I= pidf.i; D= pidf.d; F=pidf.f;
-            bufferVal = new RingBuffer(bufferSize);
-            bufferTime = new RingBuffer(bufferSize);
+            bufferVal = new RingBuffer(bufferSize, Double.class);
+            bufferTime = new RingBuffer(bufferSize, Double.class);
             timer = new ElapsedTime();
             checkSigns();
         }

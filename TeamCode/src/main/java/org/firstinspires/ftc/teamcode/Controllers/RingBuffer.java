@@ -1,23 +1,28 @@
 package org.firstinspires.ftc.teamcode.Controllers;
 
 import java.lang.reflect.Array;
+import java.lang.reflect.Constructor;
 
 /**
 this is something that Ben Caunt from Thermal said works better for FTC PID loops
  */
-public class RingBuffer {
-    private double[] buffer;
+public class RingBuffer<T> {
+    private T[] buffer;
     private int pushes = 0;
 
+    private Constructor<? extends T> ctor;
 
-    public RingBuffer(int capacity) {
-        buffer = new double[capacity];
+    public RingBuffer(int capacity, Class<T> type) {
+        @SuppressWarnings("unchecked")
+        final T[] a = (T[]) Array.newInstance(type, capacity);
+        this.buffer = a;
     }
 
 
 
-    public void push(double value) {
-        double[] oldBuffer = buffer;
+
+    public void push(T value) {
+        T[] oldBuffer = buffer;
         for(int i = 0; i < oldBuffer.length-1; i++) {
             if(i == 0) {
                 buffer[0] = value;
@@ -28,15 +33,25 @@ public class RingBuffer {
         pushes++;
     }
 
-    public double pull() {
+    public T pull() {
         if(pushes < buffer.length) return buffer[pushes-1];
         else return buffer[buffer.length-1];
     }
 
+    public T get(int index) {
+        return buffer[index];
+    }
+
     public double avg() {
         double total = 0;
-        for(double val : buffer) {
-            total += val;
+        for(T val : buffer) {
+            try{
+                total += Double.parseDouble(val.toString());
+            } catch (NumberFormatException e) {
+                e.printStackTrace();
+                return 0;
+            }
+
         }
         double avg = total / buffer.length;
         return avg;
