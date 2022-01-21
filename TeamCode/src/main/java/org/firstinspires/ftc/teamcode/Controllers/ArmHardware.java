@@ -20,4 +20,6 @@ public abstract class ArmHardware {
     public abstract PIDFCoefficients getPID();
 
     public abstract PIDFCoefficients getPositionPID();
+
+    public abstract void setPIDF(PIDFCoefficients pidf, DcMotor.RunMode runMode);
 }

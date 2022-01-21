@@ -8,19 +8,16 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
-import com.qualcomm.robotcore.hardware.DigitalChannel;
-import com.qualcomm.robotcore.hardware.DigitalChannelImpl;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
-import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.teamcode.Controllers.ArmController;
 import org.firstinspires.ftc.teamcode.Controllers.ArmHardware2021;
-import org.firstinspires.ftc.teamcode.Controllers.MaxBoticsMB1040;
 import org.firstinspires.ftc.teamcode.Controllers.TeleopHeadingDriftController;
 import org.firstinspires.ftc.teamcode.roadrunner.drive.SampleMecanumDrive;
 
+import java.util.Arrays;
 import java.util.HashMap;
 
 @Config
@@ -33,19 +30,24 @@ public class TeleOPV1 extends OpMode {
 
     public static double intakeSpeed = 1,
                          duckWheelSpeed = .6,
-                         armStartPos = 0,
-                         armTopPos = 1140 - 20,
-                         armMiddlePos = 1510 - 20,
-                         armBottomPos = 1620 - 20,
-                         odometryDownPos = .3,
-                         odometryUpPos = .05,
+                         armStartPos = 0 - PoseStorage.armPos,
+                         armTopPos = 1070 - PoseStorage.armPos,
+                         armMiddlePos = 1510 - 20 - PoseStorage.armPos,
+                         armBottomPos = 1620 - 20 - PoseStorage.armPos,
                          armServoShutPos = 0,
-                         armServoOpenPos = .2;
+                         armServoOpenPos = .2,
+                         armCapUpPos = 1164 - PoseStorage.armPos,
+                         armCapDownPos = 1852 - PoseStorage.armPos,
+                         capUpPos = .601,
+                         capCappedPos = .101,
+                         capDownPos = 0.25,
+                         capDownDownPos = 0.175,
+                         capNormalPos = 0.5;
 
-    public static PIDFCoefficients headingControllerCoefficients = new PIDFCoefficients(.011, 0, 0.001, 0);
+    public static PIDFCoefficients headingControllerCoefficients = new PIDFCoefficients(.012, 0.005, 0.001, 0);
 
     //testing this
-    public static double outputFilter = 0.15, outputRamp = .1;
+    public static double outputFilter = 0, outputRamp = 0;
 
     public static DcMotor.RunMode armMode = DcMotor.RunMode.RUN_TO_POSITION;
 
@@ -68,13 +70,26 @@ public class TeleOPV1 extends OpMode {
 
     ArmController armController;
 
-    Servo odometryServo, odometryServo1, armServo;
+    Servo armServo, capServo;
 
-    ElapsedTime odoTimer = new ElapsedTime(), armServoTimer = new ElapsedTime();
+    ElapsedTime odoTimer = new ElapsedTime(), armServoTimer = new ElapsedTime(),
+            capTimer = new ElapsedTime(), matchTime = new ElapsedTime(), modeSwap = new ElapsedTime(),
+            speedSwap = new ElapsedTime();
 
-    double driveOffset = 0, duckDirection = 1;
+    double driveOffset = 0, duckDirection = 1, capPos = 0;
 
-    MaxBoticsMB1040 distanceSensor;
+    AnalogInput metalDetector;
+    boolean rumbling = false, matchTimeStarted = false, hasmetal = false, lastHadMetal = false, capDown = false;
+
+
+    public enum DrivingMode {
+        NORMAL,
+        CAP
+    }
+
+    public DrivingMode drivingMode = DrivingMode.NORMAL;
+
+    public double drivingSpeed = 1;
 
     @Override
     public void init() {
@@ -112,24 +127,20 @@ public class TeleOPV1 extends OpMode {
         intakeMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         intakeMotor.setPower(0);
 
-        distanceSensor = new MaxBoticsMB1040(hardwareMap.get(AnalogInput.class, "distanceSensor"));
+        controller = new TeleopHeadingDriftController(.5, .05, headingControllerCoefficients, 3);
+        controller.setOutputScale(.3);
 
-        controller = new TeleopHeadingDriftController(1.25, .05, headingControllerCoefficients, 3);
-        controller.setOutputScale(.6);
-
-        odometryServo = hardwareMap.get(Servo.class, "odometryServo");
-        odometryServo.setPosition(odometryDownPos);
-
-        odometryServo1 = hardwareMap.get(Servo.class, "odometryServo1");
-        odometryServo1.setPosition(odometryDownPos);
 
         armServo = hardwareMap.get(Servo.class, "armServo");
         armServo.setPosition(armServoShutPos);
 
         armController = new ArmController(ArmHardware2021.class, hardwareMap, armMode);
 
-        DigitalChannelImpl digitalChannel1 = (DigitalChannelImpl) hardwareMap.digitalChannel.get("fjdshhjs");
-        digitalChannel1.setMode(DigitalChannel.Mode.OUTPUT);
+        metalDetector = hardwareMap.get(AnalogInput.class, "metalDetector");
+
+        capServo = hardwareMap.get(Servo.class, "capServo");
+        capServo.setDirection(Servo.Direction.REVERSE);
+        capServo.setPosition(.5);
 
         telemetry.addData(">", "Initialized!!!");
         telemetry.update();
@@ -137,6 +148,10 @@ public class TeleOPV1 extends OpMode {
 
     @Override
     public void loop() {
+        if(!matchTimeStarted) {
+            matchTime.reset();
+            matchTimeStarted = true;
+        }
         if(PoseStorage.endPose != null) {
             drive.setPoseEstimate(PoseStorage.endPose);
             PoseStorage.endPose = null;
@@ -149,40 +164,211 @@ public class TeleOPV1 extends OpMode {
         controller.setOutputFilter(outputFilter);
         controller.setRamping(outputRamp);
 
-        if(this.gamepad1.y) {
-            drive.setPoseEstimate(new Pose2d(pose.getX(),pose.getY(),0));
-            controller.reset(drive.getPoseEstimate());
+        armController.setPIDF(ArmHardware2021.veloPID, DcMotor.RunMode.RUN_USING_ENCODER);
+        armController.setPIDF(ArmHardware2021.positionPID, DcMotor.RunMode.RUN_TO_POSITION);
+
+
+        controls: {
+
+            driver: {
+                if(this.gamepad1.y) {
+                    drive.setPoseEstimate(new Pose2d(pose.getX(),pose.getY(),0));
+                    controller.reset(drive.getPoseEstimate());
+                }
+
+                if(gamepad1.share && modeSwap.seconds() > 1) {
+                    modeSwap.reset();
+                    drivingMode = drivingMode == DrivingMode.NORMAL ? DrivingMode.CAP : DrivingMode.NORMAL;
+                }
+
+                if(gamepad1.a && armServoTimer.seconds() > .5) {
+                    armServo.setPosition(armServoShut ? armServoOpenPos : armServoShutPos);
+                    armServoShut = !armServoShut;
+                    armServoTimer.reset();
+                }
+
+                drivetrain: {
+                    if(Math.abs(gamepad1.left_stick_x) > .05 || Math.abs(gamepad1.left_stick_y) > .05 || gamepad1.right_trigger > .05 || gamepad1.left_trigger > .05) {
+                        Vector2d input = new Vector2d(
+                                expTranslation ? Math.pow(gamepad1.left_stick_y,driveExp) * Math.signum(-gamepad1.left_stick_y):-gamepad1.left_stick_y,
+                                expTranslation ? Math.pow(gamepad1.left_stick_x,driveExp) * Math.signum(-gamepad1.left_stick_x):-gamepad1.left_stick_x
+                        ).rotated(-pose.getHeading() + Math.toDegrees(driveOffset));
+                        double rotation = Math.pow(gamepad1.left_trigger,driveExp) - Math.pow(gamepad1.right_trigger,driveExp);
+                        power = new Pose2d(input.getX(),input.getY(), rotation);
+//                        telemetry.addData("Input Power", power.toString());
+                    } else {
+                        power = new Pose2d(0,0,0);
+//                        telemetry.addData("Input Power", new Pose2d(0,0,0).toString());
+                    }
+                    Pose2d controlled = controller.control(pose, power).times(drivingSpeed);
+                    drive.setWeightedDrivePower(controlled);
+                    telemetry.addData("Setpoint, Target Pose, Actual, Error",
+                            Math.round(controller.getSetpoint() * 100)/100 + ", " +
+                                    Math.round(controller.getTargetPose() * 100)/100 + ", " +
+                                    Math.round(Math.toDegrees(pose.getHeading()) * 100)/100 + ", " +
+                                    Math.round(controller.getError() * 100)/100);
+                    telemetry.addData("Controlled Power", "(%.3f, %.3f, %.3f°)", controlled.getX(), controlled.getY(), controlled.getHeading());
+
+//        if(Math.abs(gamepad1.right_stick_y) > .05 || Math.abs(gamepad1.right_stick_x) > .05) {
+//            double desAng = Math.atan2(-gamepad1.right_stick_y, gamepad1.right_stick_x);
+//            telemetry.addData("Desired Angle deg", Math.toDegrees(desAng));
+//            controller.setTargetPose(desAng);
+//        }
+                    if(gamepad1.x && speedSwap.seconds() > .5) {
+                        drivingSpeed = drivingSpeed == 1 ? .5 : 1;
+                        speedSwap.reset();
+                    }
+                }
+
+                odometry: {
+                    if(gamepad1.b && odoTimer.seconds() > .5) {
+                        odoTimer.reset();
+                        if(odoUp) {
+                            drive.setOdometry(false);
+                            odoUp = false;
+                        } else {
+                            drive.setOdometry(true);
+                            odoUp = true;
+                        }
+                    }
+                }
+            }
+
+            gunner: {
+
+            if(drivingMode == DrivingMode.NORMAL) {
+                intake: {
+                    if(gamepad2.a && millis - intakeStartTime > 500) {
+                        intakeStartTime = millis;
+                        if(intakeOn) {
+                            if(intakeReverse) {
+                                intakeReverse = false;
+                            } else intakeOn = false;
+                        } else {
+                            intakeOn = true;
+                            intakeReverse = false;
+                        }
+                    } else if(gamepad2.b && millis - intakeStartTime > 500) {
+                        intakeStartTime = millis;
+                        if(intakeOn) {
+                            if(!intakeReverse) {
+                                intakeReverse = true;
+                            } else intakeOn = false;
+                        } else {
+                            intakeOn = true;
+                            intakeReverse = true;
+                        }
+                    }
+
+                    if(intakeOn) intakeMotor.setPower(intakeReverse ? -intakeSpeed * .5: intakeSpeed); else intakeMotor.setPower(0);
+
+
+                }
+                arm: {
+                if (Math.abs(gamepad1.right_stick_y) > .05) {
+                    if(armMode != DcMotor.RunMode.RUN_USING_ENCODER) {
+                        armMode = DcMotor.RunMode.RUN_USING_ENCODER;
+                        armController.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+                    }
+                    armController.setPower(-gamepad1.right_stick_y);
+                } else
+                    if(gamepad2.dpad_right || gamepad2.dpad_left || gamepad2.dpad_up || gamepad2.dpad_down){
+                        if(armMode != DcMotor.RunMode.RUN_TO_POSITION) {
+                            armMode = DcMotor.RunMode.RUN_TO_POSITION;
+                            armController.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+                        }
+                        armController.setPower(ArmController.armSetPosPower);
+                        if(gamepad2.dpad_up) armController.setPosition((int) (armTopPos - PoseStorage.armPos));
+                        if(gamepad2.dpad_left) armController.setPosition((int) (armMiddlePos- PoseStorage.armPos));
+                        if(gamepad2.dpad_down) armController.setPosition((int) (armBottomPos- PoseStorage.armPos));
+                        if(gamepad2.dpad_right) armController.setPosition((int) (armStartPos- PoseStorage.armPos));
+                    } else if(armMode == DcMotor.RunMode.RUN_USING_ENCODER) armController.setPower(0);
+
+
+                    if(capPos != capNormalPos) {
+                        capPos = capNormalPos;
+                        capServo.setPosition(capNormalPos);
+                    }
+                }
+            } else {
+                arm: {
+                if (Math.abs(gamepad1.right_stick_y) > .05) {
+                    if(armMode != DcMotor.RunMode.RUN_USING_ENCODER) {
+                        armMode = DcMotor.RunMode.RUN_USING_ENCODER;
+                        armController.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+                    }
+                    armController.setPower(-gamepad1.right_stick_y);
+                } else
+                    if(gamepad2.dpad_right || gamepad2.dpad_left || gamepad2.dpad_up || gamepad2.dpad_down){
+                        if(armMode != DcMotor.RunMode.RUN_TO_POSITION) {
+                            armMode = DcMotor.RunMode.RUN_TO_POSITION;
+                            armController.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+                        }
+                        armController.setPower(ArmController.armSetPosPower);
+                        if(gamepad2.dpad_up) armController.setPosition((int) (armCapUpPos));
+                        if(gamepad2.dpad_left) armController.setPosition((int) (armStartPos));
+                        if(gamepad2.dpad_down) armController.setPosition((int) (armCapDownPos));
+                        if(gamepad2.dpad_right) armController.setPosition((int) (armStartPos));
+                    } else if(armMode == DcMotor.RunMode.RUN_USING_ENCODER) armController.setPower(0);
+
+                    if(armController.getSetPosition() == armCapUpPos) {
+                        if(gamepad2.a && capTimer.seconds() > .5) {
+                            capTimer.reset();
+                            if(capPos == capUpPos) {
+                                capPos = capCappedPos;
+                                capServo.setPosition(capCappedPos);
+                            } else {
+                                capPos = capUpPos;
+                                capServo.setPosition(capUpPos);
+                            }
+                        }
+                    } else if(armController.getSetPosition() == armStartPos) {
+                        capPos = capNormalPos;
+                        capServo.setPosition(capNormalPos);
+                    } else if(armController.getSetPosition() == armCapDownPos) {
+                        if(gamepad2.a && capTimer.seconds() > .5) {
+                            capTimer.reset();
+                            if (capPos == capDownPos) {
+                                capPos = capDownDownPos;
+                                capServo.setPosition(capDownDownPos);
+                            } else {
+                                capPos = capDownPos;
+                                capServo.setPosition(capDownPos);
+                            }
+                        }
+                    }
+                }
+                intakeMotor.setPower(0);
+            }
+            telemetry.addData("CapPosition", capServo.getPosition());
+            telemetry.addData("ArmPosition", armController.getPosition());
+
+
+
+                duckwheels: {
+                    if(gamepad2.right_bumper && millis - duckWheelStartTime > 500) {
+                        duckWheelOn = ! duckWheelOn;
+                        duckWheelStartTime = millis;
+                    }
+
+                    if(duckWheelOn) {
+                        duckWheelMotor.setPower(duckWheelSpeed * duckDirection);
+                        duckWheelMotor2.setPower(duckWheelSpeed * duckDirection);
+                    } else {
+                        duckWheelMotor.setPower(0);
+                        duckWheelMotor2.setPower(0);
+                    }
+                }
+            }
         }
 
-        if(Math.abs(gamepad1.right_stick_y) > .05 || Math.abs(gamepad1.right_stick_x) > .05) {
-            double desAng = Math.atan2(-gamepad1.right_stick_y, gamepad1.right_stick_x);
-            telemetry.addData("Desired Angle deg", Math.toDegrees(desAng));
-            controller.setTargetPose(desAng);
-        }
+
+
 
         if(controller.getEnabled() != driftController) {
             controller.setEnabled(driftController);
         }
-        if(Math.abs(gamepad1.left_stick_x) > .05 || Math.abs(gamepad1.left_stick_y) > .05 || gamepad1.right_trigger > .05 || gamepad1.left_trigger > .05) {
-            Vector2d input = new Vector2d(
-                    expTranslation ? Math.pow(gamepad1.left_stick_y,driveExp) * Math.signum(-gamepad1.left_stick_y):-gamepad1.left_stick_y,
-                    expTranslation ? Math.pow(gamepad1.left_stick_x,driveExp) * Math.signum(-gamepad1.left_stick_x):-gamepad1.left_stick_x
-            ).rotated(-pose.getHeading() + Math.toDegrees(driveOffset));
-            double rotation = Math.pow(gamepad1.left_trigger,driveExp) - Math.pow(gamepad1.right_trigger,driveExp);
-            power = new Pose2d(input.getX(),input.getY(), rotation);
-            telemetry.addData("Input Power", power.toString());
-        } else {
-            power = new Pose2d(0,0,0);
-            telemetry.addData("Input Power", new Pose2d(0,0,0).toString());
-        }
-        Pose2d controlled = controller.control(pose, power);
-        drive.setWeightedDrivePower(controlled);
-        telemetry.addData("Setpoint, Target Pose, Actual, Error",
-          Math.round(controller.getSetpoint() * 100)/100 + ", " +
-                  Math.round(controller.getTargetPose() * 100)/100 + ", " +
-                  Math.round(Math.toDegrees(pose.getHeading()) * 100)/100 + ", " +
-                  Math.round(controller.getError() * 100)/100);
-        telemetry.addData("Controlled Power", "(%.3f, %.3f, %.3f°)", controlled.getX(), controlled.getY(), controlled.getHeading());
+
 //        drive.setWeightedDrivePower(power);
 
         HashMap<String, Object> map = new HashMap<>();
@@ -192,76 +378,38 @@ public class TeleOPV1 extends OpMode {
         double[] avgs = controller.getBufferAvgs();
         map.put("BufferVal avg", avgs[0]);
         map.put("BufferTime avg", avgs[1]);
-        map.put("Distance Sensor", distanceSensor.getDistance(DistanceUnit.INCH));
-        telemetry.addData("Distance Sensor", distanceSensor.getDistance(DistanceUnit.INCH));
-        drive.addTelemetry(map);
+        map.put("MetalDetectorVoltage", metalDetector.getVoltage());
+//        drive.addTelemetry(map);
 
-        if(gamepad1.right_bumper && millis - intakeStartTime > 500) {
-            intakeOn = !intakeOn;
-            intakeStartTime = millis;
-        }
-        if(gamepad1.left_bumper && millis - duckWheelStartTime > 500) {
-            duckWheelOn = ! duckWheelOn;
-            duckWheelStartTime = millis;
-        }
+        telemetry.addData("MetalDetectorVoltage", metalDetector.getVoltage());
+        telemetry.addData("Pose Velocity", drive.getCurrentLocalizer().getPoseVelocity());
 
-//        if (Math.abs(gamepad1.right_stick_y) > .05) {
-//            if(armMode != DcMotor.RunMode.RUN_USING_ENCODER) {
-//                armMode = DcMotor.RunMode.RUN_USING_ENCODER;
-//                armController.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-//            }
-//                armController.setPower(-gamepad1.right_stick_y);
-//        } else
-            if(gamepad1.dpad_right || gamepad1.dpad_left || gamepad1.dpad_up || gamepad1.dpad_down){
-                if(armMode != DcMotor.RunMode.RUN_TO_POSITION) {
-                    armMode = DcMotor.RunMode.RUN_TO_POSITION;
-                    armController.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-                }
-            armController.setPower(ArmController.armSetPosPower);
-            if(gamepad1.dpad_up) armController.setPosition((int) armTopPos);
-            if(gamepad1.dpad_left) armController.setPosition((int) armMiddlePos);
-            if(gamepad1.dpad_down) armController.setPosition((int) armBottomPos);
-            if(gamepad1.dpad_right) armController.setPosition((int) armStartPos);
-        } else if(armMode == DcMotor.RunMode.RUN_USING_ENCODER) armController.setPower(0);
 
-        if(gamepad1.b) intakeReverse = !intakeReverse;
 
-        if(intakeOn) intakeMotor.setPower(intakeReverse ? -intakeSpeed * .25: intakeSpeed); else intakeMotor.setPower(0);
-        if(duckWheelOn) {
-            duckWheelMotor.setPower(duckWheelSpeed * duckDirection);
-            duckWheelMotor2.setPower(duckWheelSpeed * duckDirection);
-        } else {
-            duckWheelMotor.setPower(0);
-            duckWheelMotor2.setPower(0);
-        }
 
-        if(gamepad1.x && odoTimer.seconds() > .5) {
-            odoTimer.reset();
-            if(odoUp) {
-                odometryServo1.setPosition(odometryDownPos);
-                odometryServo.setPosition(odometryDownPos);
-                odoUp = false;
-            } else {
-                odometryServo1.setPosition(odometryUpPos);
-                odometryServo.setPosition(odometryUpPos);
-                odoUp = true;
+
+
+
+        sensors: {
+            hasmetal = metalDetector.getVoltage() > 1.5;
+            if(hasmetal && !lastHadMetal) {
+                gamepad1.rumble(1.0, 1.0, 1);
             }
+            lastHadMetal = hasmetal;
         }
 
-        if(gamepad1.a && armServoTimer.seconds() > .5) {
-            armServo.setPosition(armServoShut ? armServoOpenPos : armServoShutPos);
-            armServoShut = ! armServoShut;
-            armServoTimer.reset();
-        }
-//        if(gamepad1.a && !rumbled) {
-//            gamepad1.rumble(1.0, 1.0, Gamepad.RUMBLE_DURATION_CONTINUOUS);
-//            rumbled = true;
-//        }
 
-        telemetry.addData("ArmPos", armController.getPosition());
-        telemetry.addData("x, y, degrees:",pose.toString());
-        telemetry.addData("power", power);
-        telemetry.addData("motor PID", armController.getPositionPID().toString());
+
+
+
+        telemetry.addData("Distances FBLR", Arrays.toString(drive.getCurrentLocalizer().getDistances()));
+        telemetry.addData("Best Localizer", drive.getCurrentLocalizer().getBestCurrentLocalizer());
+        telemetry.addData("Best Estimate", drive.getCurrentLocalizer().getPoseEstimate());
+        telemetry.addData("Distance Sesnor Estimate", drive.getCurrentLocalizer().getDistEstimate());
+        telemetry.addData("Mecanum Localizer Estimate", drive.getCurrentLocalizer().getWheelEstimate());
+        telemetry.addData("Odometry Localizer Estimate", drive.getCurrentLocalizer().getOdoEstimate());
+
+
     }
 }
 

@@ -10,21 +10,20 @@ import org.firstinspires.ftc.teamcode.Controllers.ArmController;
 import org.firstinspires.ftc.teamcode.Controllers.ArmHardware2021;
 import org.firstinspires.ftc.teamcode.roadrunner.drive.DriveConstants;
 import org.firstinspires.ftc.teamcode.roadrunner.drive.SampleMecanumDrive;
-import org.opencv.core.Mat;
 
 import java.util.HashMap;
 
 @Autonomous
-public class RedDuckAutoV1 extends TeleOPV1 {
+public class RedDuckAutoWarehouse extends TeleOPV1 {
 
     public HashMap<String, Trajectory> segments = new HashMap<>();
 
     public static Pose2d startPose = new Pose2d(-41, -63, Math.toRadians(90));
 
-    public static Trajectory toDuck, toDuck2, toHub, toDepot, toDepot2;
+    public static Trajectory toDuck, toDuck2, toHub, toWarehouse, toDepot2;
 
     public enum State {
-        init, toDuck, spinDuck, toHub, deposit, toDepot
+        init, toDuck, spinDuck, toHub, deposit, toWarehouse
     }
 
     public State state = State.init;
@@ -54,7 +53,7 @@ public class RedDuckAutoV1 extends TeleOPV1 {
                 .build();
 
         toDuck2 = drive.trajectoryBuilder(toDuck.end())
-                .splineToSplineHeading(new Pose2d(-65, -54.5, Math.toRadians(90)), Math.toRadians(-90), SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL*.5, DriveConstants.MAX_ANG_VEL*.5, DriveConstants.TRACK_WIDTH),
+                .splineToSplineHeading(new Pose2d(-65, -52.75, Math.toRadians(90)), Math.toRadians(-90), SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL*.5, DriveConstants.MAX_ANG_VEL*.5, DriveConstants.TRACK_WIDTH),
                         SampleMecanumDrive.getAccelerationConstraint(DriveConstants.MAX_ACCEL*.5))
 //                .splineToSplineHeading(new Pose2d(-65, -64.75, Math.toRadians(90)), Math.toRadians(-90), SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL*.165, DriveConstants.MAX_ANG_VEL*.165, DriveConstants.TRACK_WIDTH),
 //                        SampleMecanumDrive.getAccelerationConstraint(DriveConstants.MAX_ACCEL*.5))
@@ -65,12 +64,14 @@ public class RedDuckAutoV1 extends TeleOPV1 {
                 .splineToSplineHeading(new Pose2d(-34, -24, Math.toRadians(180)), Math.toRadians(0))
                 .build();
 
-        toDepot = drive.trajectoryBuilder(toHub.end())
-                .splineToLinearHeading(new Pose2d(-62, -36, Math.toRadians(-90)), Math.toRadians(180))
+        toWarehouse = drive.trajectoryBuilder(toHub.end())
+                .splineToSplineHeading(new Pose2d(-60, -48, Math.toRadians(0)), Math.toRadians(-90))
+                .splineToSplineHeading(new Pose2d(-36,-62, 0), Math.toRadians(0))
+                .splineToSplineHeading(new Pose2d(36, -65, 0), Math.toRadians(5))
 //                .addDisplacementMarker(() -> drive.followTrajectoryAsync(toDepot2))
                 .build();
 
-        toDepot2 = drive.trajectoryBuilder(toDepot.end())
+        toDepot2 = drive.trajectoryBuilder(toWarehouse.end())
                 .forward(21)
                 .build();
 
@@ -118,6 +119,7 @@ public class RedDuckAutoV1 extends TeleOPV1 {
             case toHub: {
                 if(!drive.isBusy()) {
                     armController.setPosition((int) armTopPos);
+//                    armServo.setPosition(armServoOpenPos);
                     state = State.deposit;
                 }
             }
@@ -131,13 +133,13 @@ public class RedDuckAutoV1 extends TeleOPV1 {
 //                    armServo.setPosition(armServoShutPos);
                     armController.setPosition((int) armStartPos);
 //                    intakeMotor.setPower(0);
-                    drive.followTrajectoryAsync(toDepot);
-                    state = State.toDepot;
+                    drive.followTrajectoryAsync(toWarehouse);
+                    state = State.toWarehouse;
                 }
             }
             break;
 
-            case toDepot: {
+            case toWarehouse: {
                 if(Math.abs(armController.getPosition() - armTopPos*.6) < ArmHardware2021.targetPosTolerance) {
                     armServo.setPosition(armServoShutPos);
                 }

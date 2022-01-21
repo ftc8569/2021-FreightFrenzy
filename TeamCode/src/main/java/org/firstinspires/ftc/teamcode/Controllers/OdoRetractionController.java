@@ -25,7 +25,7 @@ public class OdoRetractionController {
         isUp = up;
     }
 
-    public boolean getUp() {
+    public boolean isUp() {
         return isUp;
     }
 }

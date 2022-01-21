@@ -14,6 +14,8 @@ public class MaxBoticsArray {
     private MaxBoticsMB1040 frontSensor, backSensor, leftSensor, rightSensor;
     private DigitalChannelImpl startPin;
 
+    public static boolean isLooping = false;
+
     public MaxBoticsArray(DigitalChannel startPin, AnalogInput frontSensor, AnalogInput backSensor, AnalogInput leftSensor, AnalogInput rightSensor) {
         this.frontSensor = new MaxBoticsMB1040(frontSensor);
         this.backSensor = new MaxBoticsMB1040(backSensor);
@@ -21,17 +23,20 @@ public class MaxBoticsArray {
         this.rightSensor = new MaxBoticsMB1040(rightSensor);
         this.startPin = (DigitalChannelImpl) startPin;
 
-        ElapsedTime timer = new ElapsedTime();
+        if(!isLooping) {
+            ElapsedTime timer = new ElapsedTime();
 
-        startPin.setMode(DigitalChannel.Mode.OUTPUT);
-        startPin.setState(true);
-        timer.reset();
+            startPin.setMode(DigitalChannel.Mode.OUTPUT);
+            startPin.setState(true);
+            timer.reset();
 
-        while (timer.milliseconds() < 1) {
+            while (timer.milliseconds() < 1) {
 
+            }
+            startPin.setState(false);
+            startPin.setMode(DigitalChannel.Mode.INPUT);
         }
-        startPin.setState(false);
-        startPin.setMode(DigitalChannel.Mode.INPUT);
+        isLooping = true;
     }
 
     public double[] getDistances(DistanceUnit unit) {

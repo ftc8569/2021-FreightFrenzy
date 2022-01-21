@@ -12,6 +12,8 @@ public class ArmController {
 
     public static double armSetPosPower = 1; //tuen this down if too fast when going to positions
 
+    protected double setPos = 0;
+
     public ArmController(Class<? extends ArmHardware> hardware, HardwareMap hardwareMap, DcMotor.RunMode mode) {
         this.hardwareMap = hardwareMap;
         try {
@@ -33,12 +35,20 @@ public class ArmController {
     public void setMode(DcMotor.RunMode mode) {
         hardware.set(0.0); //safety reasons
         hardware.setMode(mode);
+        if(mode != DcMotor.RunMode.RUN_TO_POSITION) {
+            setPos = -1;
+        }
     }
 
     //this could have some unwanted behavior if used while not in RUN_TO_POSITION so it might should be redone slightly
     public void setPosition(int position) {
         hardware.set(armSetPosPower);
         hardware.setPosition(position);
+        setPos = position;
+    }
+
+    public double getSetPosition() {
+        return setPos;
     }
 
     public PIDFCoefficients getPID() {
@@ -47,5 +57,9 @@ public class ArmController {
 
     public PIDFCoefficients getPositionPID() {
         return hardware.getPositionPID();
+    }
+
+    public void setPIDF(PIDFCoefficients pidf, DcMotor.RunMode runMode) {
+        hardware.setPIDF(pidf, runMode);
     }
 }

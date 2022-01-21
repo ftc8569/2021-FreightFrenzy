@@ -5,6 +5,7 @@ import android.annotation.SuppressLint;
 import androidx.annotation.NonNull;
 
 import com.acmerobotics.dashboard.FtcDashboard;
+import com.acmerobotics.dashboard.canvas.Canvas;
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.acmerobotics.roadrunner.control.PIDCoefficients;
@@ -42,7 +43,9 @@ import org.firstinspires.ftc.teamcode.Controllers.OdoRetractionController;
 import org.firstinspires.ftc.teamcode.roadrunner.trajectorysequence.TrajectorySequence;
 import org.firstinspires.ftc.teamcode.roadrunner.trajectorysequence.TrajectorySequenceBuilder;
 import org.firstinspires.ftc.teamcode.roadrunner.trajectorysequence.TrajectorySequenceRunner;
+import org.firstinspires.ftc.teamcode.roadrunner.util.DashboardUtil;
 import org.firstinspires.ftc.teamcode.roadrunner.util.LynxModuleUtil;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -54,6 +57,7 @@ import static org.firstinspires.ftc.teamcode.roadrunner.drive.DriveConstants.MAX
 import static org.firstinspires.ftc.teamcode.roadrunner.drive.DriveConstants.MAX_ANG_VEL;
 import static org.firstinspires.ftc.teamcode.roadrunner.drive.DriveConstants.MAX_VEL;
 import static org.firstinspires.ftc.teamcode.roadrunner.drive.DriveConstants.MOTOR_VELO_PID;
+import static org.firstinspires.ftc.teamcode.roadrunner.drive.DriveConstants.MOTOR_VELO_PID_BACK_WHEELS;
 import static org.firstinspires.ftc.teamcode.roadrunner.drive.DriveConstants.RUN_USING_ENCODER;
 import static org.firstinspires.ftc.teamcode.roadrunner.drive.DriveConstants.TRACK_WIDTH;
 import static org.firstinspires.ftc.teamcode.roadrunner.drive.DriveConstants.encoderTicksToInches;
@@ -159,12 +163,12 @@ public class SampleMecanumDrive extends MecanumDrive {
         setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         if (RUN_USING_ENCODER && MOTOR_VELO_PID != null) {
-            setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, MOTOR_VELO_PID);
+            setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, MOTOR_VELO_PID, MOTOR_VELO_PID_BACK_WHEELS);
         }
 
         AnalogInput front = hardwareMap.get(AnalogInput.class, "frontSensor");
         MaxBoticsMB1040 frontSensor = new MaxBoticsMB1040(front);
-        AnalogInput back = hardwareMap.get(AnalogInput.class, "frontSensor");
+        AnalogInput back = hardwareMap.get(AnalogInput.class, "backSensor");
         MaxBoticsMB1040 backSensor = new MaxBoticsMB1040(back);
         AnalogInput left = hardwareMap.get(AnalogInput.class, "leftSensor");
         MaxBoticsMB1040 leftSensor = new MaxBoticsMB1040(left);
@@ -263,13 +267,22 @@ public class SampleMecanumDrive extends MecanumDrive {
 
 
         double filteredHeading = getRawExternalHeading();
-        double filteredVelo = getExternalHeadingVelocity();
+        double filteredVelo = getExternalHeadingVelocity() != null ? getExternalHeadingVelocity() : 0;
         packet.put("Original heading", headingAvg);
         packet.put("Filtered Heading", filteredHeading);
         packet.put("Original Velo", headingVeloAvg);
         packet.put("Filtered Velo", filteredVelo);
         packet.put("wheel positions", String.format("Parallel %.2f, Perpendicular %.2f", odolocalizer.getWheelPositions().get(0), odolocalizer.getWheelPositions().get(1)));
-        dashboard.sendTelemetryPacket(packet);
+        packet.put("Distances FBLR", Arrays.toString(localizer.getDistances()));
+        packet.put("Best Localizer", localizer.getBestCurrentLocalizer());
+        packet.put("Best Estimate", localizer.getPoseEstimate());
+        packet.put("Distance Sesnor Estimate", localizer.getDistEstimate());
+        packet.put("Mecanum Localizer Estimate", localizer.getWheelEstimate());
+        packet.put("Odometry Localizer Estimate", localizer.getOdoEstimate());
+        Canvas fieldOverlay = packet.fieldOverlay();
+
+        DashboardUtil.drawRobot(fieldOverlay, getPoseEstimate());
+//        dashboard.sendTelemetryPacket(packet);
     }
 
     public void waitForIdle() {
@@ -293,15 +306,25 @@ public class SampleMecanumDrive extends MecanumDrive {
         }
     }
 
-    public void setPIDFCoefficients(DcMotor.RunMode runMode, PIDFCoefficients coefficients) {
+    public void setPIDFCoefficients(DcMotor.RunMode runMode, PIDFCoefficients frontCoefficients, PIDFCoefficients backCoefficients) {
         PIDFCoefficients compensatedCoefficients = new PIDFCoefficients(
-                coefficients.p, coefficients.i, coefficients.d,
-                coefficients.f * 12 / batteryVoltageSensor.getVoltage()
+                frontCoefficients.p, frontCoefficients.i, frontCoefficients.d,
+                frontCoefficients.f * 12 / batteryVoltageSensor.getVoltage()
         );
 
-        for (DcMotorEx motor : motors) {
-            motor.setPIDFCoefficients(runMode, compensatedCoefficients);
-        }
+        PIDFCoefficients compensatedBackCoefficients = new PIDFCoefficients(
+                backCoefficients.p, backCoefficients.i, backCoefficients.d,
+                backCoefficients.f * 12 / batteryVoltageSensor.getVoltage()
+        );
+
+        motors.get(0).setPIDFCoefficients(runMode, compensatedCoefficients);
+        motors.get(1).setPIDFCoefficients(runMode, compensatedBackCoefficients);
+        motors.get(2).setPIDFCoefficients(runMode, compensatedBackCoefficients);
+        motors.get(3).setPIDFCoefficients(runMode, compensatedCoefficients);
+
+//        for (DcMotorEx motor : motors) {
+//            motor.setPIDFCoefficients(runMode, compensatedCoefficients);
+//        }
     }
 
     public void setWeightedDrivePower(Pose2d drivePower) {
@@ -424,7 +447,7 @@ public class SampleMecanumDrive extends MecanumDrive {
         setMotorPowers(0,0,0,0);
     }
 
-    public void addTelemetry(Map<String, Object> map) {
+    public void addTelemetry(@NotNull Map<String, Object> map) {
         this.packet.putAll(map);
     }
 
@@ -432,4 +455,20 @@ public class SampleMecanumDrive extends MecanumDrive {
         retractionController.set(up);
     }
 
+
+    public OdoMechDistLocalizer getCurrentLocalizer() {
+        return localizer;
+    }
+
+    public TwoWheelTrackingLocalizer getOdolocalizer() {
+        return odolocalizer;
+    }
+
+    public MecanumLocalizer getWheelLocalizer() {
+        return wheelLocalizer;
+    }
+
+    public DistanceSensorArrayLocalizer getDistLocalizer() {
+        return distLocalizer;
+    }
 }

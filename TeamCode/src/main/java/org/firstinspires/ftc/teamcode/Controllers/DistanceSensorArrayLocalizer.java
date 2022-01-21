@@ -4,6 +4,7 @@ import com.acmerobotics.roadrunner.geometry.Pose2d;
 import com.acmerobotics.roadrunner.localization.Localizer;
 
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+import org.firstinspires.ftc.teamcode.Development.PoseStorage;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -16,11 +17,15 @@ public class DistanceSensorArrayLocalizer implements Localizer {
 
     protected Pose2d lastEstimate = new Pose2d();
 
+    protected Pose2d poseVelocity = new Pose2d();
+
     protected MaxBoticsArray array;
 
     protected Pose2d bestEstimate = new Pose2d();
 
     protected final int[] headings = {-180, -90, 0, 90, 180};
+
+    private double[] distances = new double[4];
 
     public DistanceSensorArrayLocalizer(MaxBoticsArray array) {
         this.array = array;
@@ -32,6 +37,7 @@ public class DistanceSensorArrayLocalizer implements Localizer {
     }
 
     public static double frontOffset = 9, backOffset = 9, leftOffset = 7, rightOffset = 7;
+
 
     @NotNull
     @Override
@@ -52,9 +58,14 @@ public class DistanceSensorArrayLocalizer implements Localizer {
 
     @Override
     public void update() {
-        double[] distances = array.getDistances(DistanceUnit.INCH);
+        distances = array.getDistances(DistanceUnit.INCH);
 
-        if(Math.abs(bestEstimate.getX()) > 24 && Math.abs(bestEstimate.getY()) > 24 && (Math.abs(Math.toDegrees(bestEstimate.getHeading())) % 90 < 45) ? Math.abs(Math.toDegrees(bestEstimate.getHeading())) % 90 < 3 :  90 - Math.abs(Math.toDegrees(bestEstimate.getHeading()) % 90) < 3) {
+        if(Math.abs(bestEstimate.getX()) > 24 && Math.abs(bestEstimate.getY()) > 24 &&
+                (Math.abs(Math.toDegrees(bestEstimate.getHeading())) % 90 < 45) ?
+                Math.abs(Math.toDegrees(bestEstimate.getHeading())) % 90 < 3 :
+                90 - Math.abs(Math.toDegrees(bestEstimate.getHeading()) % 90) < 3 &&
+                Math.abs(bestEstimate.getX()) < 66 && Math.abs(bestEstimate.getY()) < 66 &&
+                Math.abs(poseVelocity.getX()) < 20 && Math.abs(poseVelocity.getY()) < 20 && Math.abs(poseVelocity.getHeading()) < 5) {
             double val = bestEstimate.getHeading();
             double distance = Math.abs(headings[0] - val);
             int id = 0;
@@ -182,5 +193,21 @@ public class DistanceSensorArrayLocalizer implements Localizer {
             }
 
         } else lastEstimate = new Pose2d();
+
+        if(!lastEstimate.equals(new Pose2d())) {
+            bestEstimate = lastEstimate;
+        }
+    }
+    
+    public double[] getDistances() {
+        return distances;
+    }
+
+    public void updateHeading(double heading) {
+        bestEstimate = new Pose2d(bestEstimate.getX(), bestEstimate.getY(), heading);
+    }
+
+    public void setPoseVelocity(@NotNull Pose2d poseVelocity) {
+        this.poseVelocity = poseVelocity;
     }
 }

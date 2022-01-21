@@ -196,7 +196,7 @@ public class TrajectorySequenceRunner {
 
         draw(fieldOverlay, currentTrajectorySequence, currentSegment, targetPose, poseEstimate);
 
-//        dashboard.sendTelemetryPacket(packet);
+//        sendTelemetryPacket(packet);
 
         return driveSignal;
     }

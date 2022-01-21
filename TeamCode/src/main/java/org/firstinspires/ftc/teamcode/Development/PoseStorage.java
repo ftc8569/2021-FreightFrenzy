@@ -8,4 +8,6 @@ public class PoseStorage {
         RED, BLUE, NEITHER
     }
     public static Alliance alliance = Alliance.NEITHER;
+
+    public static double armPos = 0;
 }

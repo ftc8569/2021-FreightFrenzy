@@ -45,11 +45,13 @@ public class RingBuffer<T> {
     public double avg() {
         double total = 0;
         for(T val : buffer) {
-            try{
-                total += Double.parseDouble(val.toString());
-            } catch (NumberFormatException e) {
-                e.printStackTrace();
-                return 0;
+            if(val != null) {
+                try {
+                    total += Double.parseDouble(val.toString());
+                } catch (NumberFormatException e) {
+                    e.printStackTrace();
+                    return 0;
+                }
             }
 
         }
