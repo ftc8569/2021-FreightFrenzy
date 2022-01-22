@@ -1,8 +1,12 @@
 package org.firstinspires.ftc.teamcode.Development;
 
+import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.roadrunner.geometry.Pose2d;
 import com.acmerobotics.roadrunner.geometry.Vector2d;
+import com.qualcomm.hardware.rev.Rev2mDistanceSensor;
+import com.qualcomm.hardware.rev.RevBlinkinLedDriver;
+import com.qualcomm.hardware.rev.RevColorSensorV3;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.AnalogInput;
@@ -12,10 +16,19 @@ import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
+import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.teamcode.Controllers.ArmController;
 import org.firstinspires.ftc.teamcode.Controllers.ArmHardware2021;
+import org.firstinspires.ftc.teamcode.Controllers.CupFinder;
+import org.firstinspires.ftc.teamcode.Controllers.LEDController;
+import org.firstinspires.ftc.teamcode.Controllers.RingBuffer;
 import org.firstinspires.ftc.teamcode.Controllers.TeleopHeadingDriftController;
 import org.firstinspires.ftc.teamcode.roadrunner.drive.SampleMecanumDrive;
+import org.openftc.easyopencv.OpenCvCamera;
+import org.openftc.easyopencv.OpenCvCameraFactory;
+import org.openftc.easyopencv.OpenCvCameraRotation;
+import org.openftc.easyopencv.OpenCvWebcam;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -29,6 +42,7 @@ public class TeleOPV1 extends OpMode {
     public static boolean expTranslation = true; //useful for turning but can definitely help with translation as well
 
     public static double intakeSpeed = 1,
+                         intakeOutSpeed = .4,
                          duckWheelSpeed = .6,
                          armStartPos = 0 - PoseStorage.armPos,
                          armTopPos = 1070 - PoseStorage.armPos,
@@ -36,12 +50,12 @@ public class TeleOPV1 extends OpMode {
                          armBottomPos = 1620 - 20 - PoseStorage.armPos,
                          armServoShutPos = 0,
                          armServoOpenPos = .2,
-                         armCapUpPos = 1164 - PoseStorage.armPos,
-                         armCapDownPos = 1852 - PoseStorage.armPos,
+                         armCapUpPos = 1070 - PoseStorage.armPos,
+                         armCapDownPos = 1822 - PoseStorage.armPos,
                          capUpPos = .601,
                          capCappedPos = .101,
                          capDownPos = 0.25,
-                         capDownDownPos = 0.175,
+                         capDownDownPos = 0.165,
                          capNormalPos = 0.5;
 
     public static PIDFCoefficients headingControllerCoefficients = new PIDFCoefficients(.012, 0.005, 0.001, 0);
@@ -74,12 +88,12 @@ public class TeleOPV1 extends OpMode {
 
     ElapsedTime odoTimer = new ElapsedTime(), armServoTimer = new ElapsedTime(),
             capTimer = new ElapsedTime(), matchTime = new ElapsedTime(), modeSwap = new ElapsedTime(),
-            speedSwap = new ElapsedTime();
+            speedSwap = new ElapsedTime(), autoFreightTimer = new ElapsedTime();
 
     double driveOffset = 0, duckDirection = 1, capPos = 0;
 
-    AnalogInput metalDetector;
-    boolean rumbling = false, matchTimeStarted = false, hasmetal = false, lastHadMetal = false, capDown = false;
+//    AnalogInput metalDetector;
+    boolean rumbling = false, matchTimeStarted = false, hasmetal = false, lastHadMetal = false, capDown = false, hasFreight = false;
 
 
     public enum DrivingMode {
@@ -87,14 +101,72 @@ public class TeleOPV1 extends OpMode {
         CAP
     }
 
+    public enum Freight {
+        BALL,
+        CUBE,
+        NONE
+    }
+
     public DrivingMode drivingMode = DrivingMode.NORMAL;
 
+    public Freight freight = Freight.NONE;
+
     public double drivingSpeed = 1;
+
+    Rev2mDistanceSensor frontFloor, backFloor;
+
+    RevColorSensorV3 freightSensor;
+
+    LEDController led;
+
+    double freightDist = 0, freightRed = 0, freightGreen = 0, freightBlue = 0, frontFloorDist = 0, backFloorDist = 0;
+
+    OpenCvWebcam webcam;
+
+    CupFinder pipeline;
 
     @Override
     public void init() {
         telemetry.addData(">", "Initializing...");
         telemetry.update();
+        led = new LEDController(hardwareMap.get(RevBlinkinLedDriver.class, "led"));
+        led.setPattern(RevBlinkinLedDriver.BlinkinPattern.DARK_RED);
+
+        webcam:
+        {
+            int cameraMonitorViewId = hardwareMap.appContext.getResources().getIdentifier("cameraMonitorViewId", "id", hardwareMap.appContext.getPackageName());
+            webcam = OpenCvCameraFactory.getInstance().createWebcam(hardwareMap.get(WebcamName.class, "Webcam 1"), cameraMonitorViewId);
+
+
+            pipeline = new CupFinder(webcam);
+            pipeline.pipelineStageToDisplay = CupFinder.PipelineStages.OUTPUTWITHBOUNDINGRECT;
+            webcam.setPipeline(pipeline);
+
+            FtcDashboard.getInstance().startCameraStream(webcam, 10);
+
+
+
+        // We set the viewport policy to optimized view so the preview doesn't appear 90 deg
+        // out when the RC activity is in portrait. We do our actual image processing assuming
+        // landscape orientation, though.
+        webcam.setViewportRenderingPolicy(OpenCvCamera.ViewportRenderingPolicy.OPTIMIZE_VIEW);
+
+            webcam.openCameraDeviceAsync(new OpenCvCamera.AsyncCameraOpenListener()
+            {
+                @Override
+                public void onOpened()
+                {
+                    webcam.startStreaming(640,480, OpenCvCameraRotation.SIDEWAYS_LEFT);
+                }
+
+                @Override
+                public void onError(int errorCode) {
+                    telemetry.addData("CAMERA ERROR", errorCode);
+                }
+            });
+            webcam.startStreaming(320, 240, OpenCvCameraRotation.UPRIGHT);
+
+        }
 
         switch (PoseStorage.alliance) {
             case RED:
@@ -136,7 +208,11 @@ public class TeleOPV1 extends OpMode {
 
         armController = new ArmController(ArmHardware2021.class, hardwareMap, armMode);
 
-        metalDetector = hardwareMap.get(AnalogInput.class, "metalDetector");
+//        metalDetector = hardwareMap.get(AnalogInput.class, "metalDetector");
+        frontFloor = hardwareMap.get(Rev2mDistanceSensor.class, "frontFloor");
+        backFloor = hardwareMap.get(Rev2mDistanceSensor.class, "backFloor");
+
+        freightSensor = hardwareMap.get(RevColorSensorV3.class, "freightSensor");
 
         capServo = hardwareMap.get(Servo.class, "capServo");
         capServo.setDirection(Servo.Direction.REVERSE);
@@ -144,6 +220,8 @@ public class TeleOPV1 extends OpMode {
 
         telemetry.addData(">", "Initialized!!!");
         telemetry.update();
+        while(led.getSeconds() < 1) {}
+        led.setPattern(RevBlinkinLedDriver.BlinkinPattern.GREEN);
     }
 
     @Override
@@ -176,7 +254,7 @@ public class TeleOPV1 extends OpMode {
                     controller.reset(drive.getPoseEstimate());
                 }
 
-                if(gamepad1.share && modeSwap.seconds() > 1) {
+                if(gamepad2.share && modeSwap.seconds() > 1) {
                     modeSwap.reset();
                     drivingMode = drivingMode == DrivingMode.NORMAL ? DrivingMode.CAP : DrivingMode.NORMAL;
                 }
@@ -185,6 +263,7 @@ public class TeleOPV1 extends OpMode {
                     armServo.setPosition(armServoShut ? armServoOpenPos : armServoShutPos);
                     armServoShut = !armServoShut;
                     armServoTimer.reset();
+                    freight = Freight.NONE;
                 }
 
                 drivetrain: {
@@ -260,28 +339,36 @@ public class TeleOPV1 extends OpMode {
                         }
                     }
 
-                    if(intakeOn) intakeMotor.setPower(intakeReverse ? -intakeSpeed * .5: intakeSpeed); else intakeMotor.setPower(0);
+                    if(intakeOn) intakeMotor.setPower(intakeReverse ? -intakeOutSpeed: intakeSpeed); else intakeMotor.setPower(0);
 
 
                 }
                 arm: {
-                if (Math.abs(gamepad1.right_stick_y) > .05) {
-                    if(armMode != DcMotor.RunMode.RUN_USING_ENCODER) {
-                        armMode = DcMotor.RunMode.RUN_USING_ENCODER;
-                        armController.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-                    }
-                    armController.setPower(-gamepad1.right_stick_y);
-                } else
+//                if (Math.abs(gamepad1.right_stick_y) > .05) {
+//                    if(armMode != DcMotor.RunMode.RUN_USING_ENCODER) {
+//                        armMode = DcMotor.RunMode.RUN_USING_ENCODER;
+//                        armController.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+//                    }
+//                    armController.setPower(-gamepad1.right_stick_y);
+//                } else
                     if(gamepad2.dpad_right || gamepad2.dpad_left || gamepad2.dpad_up || gamepad2.dpad_down){
                         if(armMode != DcMotor.RunMode.RUN_TO_POSITION) {
                             armMode = DcMotor.RunMode.RUN_TO_POSITION;
                             armController.setMode(DcMotor.RunMode.RUN_TO_POSITION);
                         }
                         armController.setPower(ArmController.armSetPosPower);
-                        if(gamepad2.dpad_up) armController.setPosition((int) (armTopPos - PoseStorage.armPos));
-                        if(gamepad2.dpad_left) armController.setPosition((int) (armMiddlePos- PoseStorage.armPos));
-                        if(gamepad2.dpad_down) armController.setPosition((int) (armBottomPos- PoseStorage.armPos));
-                        if(gamepad2.dpad_right) armController.setPosition((int) (armStartPos- PoseStorage.armPos));
+                        if(gamepad2.dpad_up) {
+                            armController.setPosition((int) (armTopPos - PoseStorage.armPos));
+                            intakeOn = false;
+                        }
+                        if(gamepad2.dpad_left || gamepad2.dpad_right) {
+                            armController.setPosition((int) (armStartPos- PoseStorage.armPos));
+                            armServo.setPosition(armServoShutPos);
+                        }
+                        if(gamepad2.dpad_down) {
+                            armController.setPosition((int) (armBottomPos- PoseStorage.armPos));
+                            intakeOn = false;
+                        }
                     } else if(armMode == DcMotor.RunMode.RUN_USING_ENCODER) armController.setPower(0);
 
 
@@ -306,9 +393,11 @@ public class TeleOPV1 extends OpMode {
                         }
                         armController.setPower(ArmController.armSetPosPower);
                         if(gamepad2.dpad_up) armController.setPosition((int) (armCapUpPos));
-                        if(gamepad2.dpad_left) armController.setPosition((int) (armStartPos));
+                        if(gamepad2.dpad_left) {
+                            armController.setPosition((int) (armStartPos));
+                            armServo.setPosition(armServoShutPos);
+                        }
                         if(gamepad2.dpad_down) armController.setPosition((int) (armCapDownPos));
-                        if(gamepad2.dpad_right) armController.setPosition((int) (armStartPos));
                     } else if(armMode == DcMotor.RunMode.RUN_USING_ENCODER) armController.setPower(0);
 
                     if(armController.getSetPosition() == armCapUpPos) {
@@ -378,12 +467,12 @@ public class TeleOPV1 extends OpMode {
         double[] avgs = controller.getBufferAvgs();
         map.put("BufferVal avg", avgs[0]);
         map.put("BufferTime avg", avgs[1]);
-        map.put("MetalDetectorVoltage", metalDetector.getVoltage());
+//        map.put("MetalDetectorVoltage", metalDetector.getVoltage());
 //        drive.addTelemetry(map);
 
-        telemetry.addData("MetalDetectorVoltage", metalDetector.getVoltage());
+//        telemetry.addData("MetalDetectorVoltage", metalDetector.getVoltage());
         telemetry.addData("Pose Velocity", drive.getCurrentLocalizer().getPoseVelocity());
-
+        telemetry.addData("Rect X, Y", pipeline.centerOFTarget.x + ", " + pipeline.centerOFTarget.y);
 
 
 
@@ -391,11 +480,50 @@ public class TeleOPV1 extends OpMode {
 
 
         sensors: {
-            hasmetal = metalDetector.getVoltage() > 1.5;
-            if(hasmetal && !lastHadMetal) {
-                gamepad1.rumble(1.0, 1.0, 1);
+//            hasmetal = metalDetector.getVoltage() > 1.5;
+//            if(hasmetal && !lastHadMetal) {
+//                gamepad1.rumble(1.0, 1.0, 1);
+//            }
+//            lastHadMetal = hasmetal;
+//            freightDist = freightSensor.getDistance(DistanceUnit.INCH);
+//            freightDists.push(freightDist);
+            freightBlue = freightSensor.blue();
+            freightGreen = freightSensor.green();
+            freightRed = freightSensor.red();
+            double freightAlpha = freightSensor.alpha();
+            double combinedFreight = freightRed + freightGreen + freightBlue + freightAlpha;
+            if(combinedFreight > 500) {
+                if(intakeOn) intakeReverse = true;
+                if(freightRed < 120) {
+                    freight = Freight.BALL;
+                } else {
+                    freight = Freight.CUBE;
+                }
             }
-            lastHadMetal = hasmetal;
+            switch (freight) {
+                case CUBE:
+                    led.setPattern(RevBlinkinLedDriver.BlinkinPattern.ORANGE);
+                    break;
+                case BALL:
+                    led.setPattern(RevBlinkinLedDriver.BlinkinPattern.WHITE);
+                    break;
+                case NONE:
+                    led.setPattern(RevBlinkinLedDriver.BlinkinPattern.HOT_PINK);
+                    break;
+            }
+            // bucket: 2375, 1062, 1111, 1512 (.58 dist)
+            // bucketUp: 60, 69, 63, 63 (1.65+ dist)
+            //cubeFar: 175, 252, 137
+            //cubeNear: 1321, 1683, 500
+            //ball: 93, 156, 128, 122
+//            telemetry.addData("ferightDist", freightDist);
+//            telemetry.addData("ferightDists", freightDists.avg());
+            telemetry.addData("freightRGBA", "%s, %s, %s, %s", freightRed, freightGreen, freightBlue, freightAlpha);
+            frontFloorDist = frontFloor.getDistance(DistanceUnit.INCH);
+            backFloorDist = backFloor.getDistance(DistanceUnit.INCH);
+
+            double yAngle = Math.atan2(frontFloorDist-backFloorDist, 10.25);
+            telemetry.addData("robotangle", Math.toDegrees(yAngle));
         }
 
 
