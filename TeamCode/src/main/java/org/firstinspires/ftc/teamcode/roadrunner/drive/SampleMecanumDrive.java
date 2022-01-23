@@ -79,7 +79,7 @@ public class SampleMecanumDrive extends MecanumDrive {
     public static double VY_WEIGHT = 1;
     public static double OMEGA_WEIGHT = 1;
 
-    public static double FOLLOWER_TIMEOUT = .5;
+    public static double FOLLOWER_TIMEOUT = .25;
     public static double FOLLOWER_HEADING_TOLERANCE = Math.toRadians(0.5);
     public static double FOLLOWER_POSITION_TOLERANCE = 0.25;
 
@@ -265,24 +265,22 @@ public class SampleMecanumDrive extends MecanumDrive {
         DriveSignal signal = trajectorySequenceRunner.update(getPoseEstimate(), getPoseVelocity());
         if (signal != null) setDriveSignal(signal);
 
+        addTelemetry(trajectorySequenceRunner.getPacket());
 
         double filteredHeading = getRawExternalHeading();
         double filteredVelo = getExternalHeadingVelocity() != null ? getExternalHeadingVelocity() : 0;
-        packet.put("Original heading", headingAvg);
-        packet.put("Filtered Heading", filteredHeading);
-        packet.put("Original Velo", headingVeloAvg);
-        packet.put("Filtered Velo", filteredVelo);
-        packet.put("wheel positions", String.format("Parallel %.2f, Perpendicular %.2f", odolocalizer.getWheelPositions().get(0), odolocalizer.getWheelPositions().get(1)));
-        packet.put("Distances FBLR", Arrays.toString(localizer.getDistances()));
+//        packet.put("Original heading", headingAvg);
+//        packet.put("Filtered Heading", filteredHeading);
+//        packet.put("Original Velo", headingVeloAvg);
+//        packet.put("Filtered Velo", filteredVelo);
+//        packet.put("wheel positions", String.format("Parallel %.2f, Perpendicular %.2f", odolocalizer.getWheelPositions().get(0), odolocalizer.getWheelPositions().get(1)));
+//        packet.put("Distances FBLR", Arrays.toString(localizer.getDistances()));
         packet.put("Best Localizer", localizer.getBestCurrentLocalizer());
-        packet.put("Best Estimate", localizer.getPoseEstimate());
-        packet.put("Distance Sesnor Estimate", localizer.getDistEstimate());
-        packet.put("Mecanum Localizer Estimate", localizer.getWheelEstimate());
-        packet.put("Odometry Localizer Estimate", localizer.getOdoEstimate());
-        Canvas fieldOverlay = packet.fieldOverlay();
-
-        DashboardUtil.drawRobot(fieldOverlay, getPoseEstimate());
-//        dashboard.sendTelemetryPacket(packet);
+//        packet.put("Best Estimate", localizer.getPoseEstimate());
+//        packet.put("Distance Sesnor Estimate", localizer.getDistEstimate());
+//        packet.put("Mecanum Localizer Estimate", localizer.getWheelEstimate());
+//        packet.put("Odometry Localizer Estimate", localizer.getOdoEstimate());
+        dashboard.sendTelemetryPacket(packet);
     }
 
     public void waitForIdle() {
@@ -450,6 +448,7 @@ public class SampleMecanumDrive extends MecanumDrive {
     public void addTelemetry(@NotNull Map<String, Object> map) {
         this.packet.putAll(map);
     }
+
 
     public void setOdometry(boolean up) {
         retractionController.set(up);

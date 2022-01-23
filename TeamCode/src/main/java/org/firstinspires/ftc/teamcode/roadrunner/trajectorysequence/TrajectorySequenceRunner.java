@@ -17,6 +17,7 @@ import com.acmerobotics.roadrunner.trajectory.TrajectoryMarker;
 import com.acmerobotics.roadrunner.util.NanoClock;
 import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 
+import org.firstinspires.ftc.teamcode.roadrunner.drive.SampleMecanumDrive;
 import org.firstinspires.ftc.teamcode.roadrunner.trajectorysequence.sequencesegment.SequenceSegment;
 import org.firstinspires.ftc.teamcode.roadrunner.trajectorysequence.sequencesegment.TrajectorySegment;
 import org.firstinspires.ftc.teamcode.roadrunner.trajectorysequence.sequencesegment.TurnSegment;
@@ -25,8 +26,10 @@ import org.firstinspires.ftc.teamcode.roadrunner.util.DashboardUtil;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 @Disabled
 @Config
@@ -58,6 +61,8 @@ public class TrajectorySequenceRunner {
 
     private final FtcDashboard dashboard;
     private final LinkedList<Pose2d> poseHistory = new LinkedList<>();
+
+    HashMap<String, Object> packet = new HashMap<>();
 
     public TrajectorySequenceRunner(TrajectoryFollower follower, PIDCoefficients headingPIDCoefficients) {
         this.follower = follower;
@@ -186,17 +191,17 @@ public class TrajectorySequenceRunner {
             poseHistory.removeFirst();
         }
 
-        packet.put("x", poseEstimate.getX());
-        packet.put("y", poseEstimate.getY());
-        packet.put("heading (deg)", Math.toDegrees(poseEstimate.getHeading()));
 
-        packet.put("xError", getLastPoseError().getX());
-        packet.put("yError", getLastPoseError().getY());
-        packet.put("headingError (deg)", Math.toDegrees(getLastPoseError().getHeading()));
+        this.packet.put("x", poseEstimate.getX());
+
+        this.packet.put("y", poseEstimate.getY());
+        this.packet.put("heading (deg)", Math.toDegrees(poseEstimate.getHeading()));
+
+        this.packet.put("xError", getLastPoseError().getX());
+        this.packet.put("yError", getLastPoseError().getY());
+        this.packet.put("headingError (deg)", Math.toDegrees(getLastPoseError().getHeading()));
 
         draw(fieldOverlay, currentTrajectorySequence, currentSegment, targetPose, poseEstimate);
-
-//        sendTelemetryPacket(packet);
 
         return driveSignal;
     }
@@ -275,5 +280,9 @@ public class TrajectorySequenceRunner {
 
     public void cancel() {
         currentTrajectorySequence = null;
+    }
+
+    public HashMap<String, Object> getPacket() {
+        return packet;
     }
 }

@@ -73,7 +73,7 @@ public class TeleOPV1 extends OpMode {
     private static final boolean driftController = true;
 
 
-    public DcMotorEx intakeMotor, duckWheelMotor, duckWheelMotor2;
+    public static DcMotorEx intakeMotor, duckWheelMotor, duckWheelMotor2;
     //duckWheel port 0 expansion hub
     //intake port 1 on expansion hub
 
@@ -82,7 +82,7 @@ public class TeleOPV1 extends OpMode {
     SampleMecanumDrive drive;
     TeleopHeadingDriftController controller;
 
-    ArmController armController;
+    public static ArmController armController;
 
     Servo armServo, capServo;
 
