@@ -27,8 +27,12 @@ public class DistanceSensorArrayLocalizer implements Localizer {
 
     private double[] distances = new double[4];
 
-    public DistanceSensorArrayLocalizer(MaxBoticsArray array) {
+    public DistanceSensorArrayLocalizer(MaxBoticsArray array) throws IllegalStateException{
         this.array = array;
+
+        if(!PoseStorage.isArrayInit) {
+            throw new IllegalStateException("You must initialize the distance sensors before you start an OpMode!!!");
+        }
     }
 
     public enum Corner  {
@@ -209,5 +213,9 @@ public class DistanceSensorArrayLocalizer implements Localizer {
 
     public void setPoseVelocity(@NotNull Pose2d poseVelocity) {
         this.poseVelocity = poseVelocity;
+    }
+
+    public MaxBoticsArray getArray() {
+        return array;
     }
 }

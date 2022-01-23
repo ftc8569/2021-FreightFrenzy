@@ -4,8 +4,9 @@ package org.firstinspires.ftc.teamcode.Controllers;
         import android.os.Environment;
 
         import com.acmerobotics.dashboard.FtcDashboard;
+        import com.acmerobotics.dashboard.config.Config;
 
-        import org.firstinspires.ftc.robotcore.external.Telemetry;
+        import org.firstinspires.ftc.teamcode.Development.PoseStorage;
         import org.jetbrains.annotations.NotNull;
         import org.opencv.core.Core;
         import org.opencv.core.Mat;
@@ -39,6 +40,7 @@ package org.firstinspires.ftc.teamcode.Controllers;
  * if you're doing something weird where you do need it synchronized with your OpMode thread,
  * then you will need to account for that accordingly.
  */
+@Config
 public class CupFinder extends OpenCvPipeline
 {
     public CupFinder(@NotNull OpenCvCamera webcamToUse)
@@ -55,13 +57,14 @@ public class CupFinder extends OpenCvPipeline
     private Mat blurImage = new Mat();
     private Mat outputImageBGR = new Mat();
     private Mat outputImageRBG = new Mat();
-    private Rect BoundingRectangle = null;
-    Scalar base = new Scalar(172, 178, 232);
-    Scalar lower = new Scalar(base.val[0] - 10, base.val[1] -10, base.val[2] - 10);
-    Scalar upper = new Scalar(base.val[0] + 10, base.val[1] +10, base.val[2] + 10);
+    public Rect BoundingRectangle = null;
+    public static int colorErrorTolerance = 30;
+    Scalar base = new Scalar(165, 200, 200);
+    Scalar lower = new Scalar(base.val[0] - 7.5, base.val[1] -colorErrorTolerance, base.val[2] - colorErrorTolerance);
+    Scalar upper = new Scalar(base.val[0] + 7.5, base.val[1] +colorErrorTolerance, base.val[2] + colorErrorTolerance);
 
     // Volatile since accessed by OpMode thread w/o synchronization
-    public volatile PositionEnum PositionDetected = PositionEnum.UNKNOWN;
+    public volatile PositionEnum positionDetected = PositionEnum.UNKNOWN;
     public volatile PipelineStages pipelineStageToDisplay = PipelineStages.INPUT;
     public volatile int measuredArea = 0;
     public volatile Point centerOFTarget = null;
@@ -121,7 +124,11 @@ public class CupFinder extends OpenCvPipeline
             else BoundingRectangle = null;
 
             if(BoundingRectangle == null) {
-                PositionDetected = PositionEnum.UNKNOWN;
+                if(PoseStorage.alliance == PoseStorage.Alliance.RED){
+                    positionDetected = PositionEnum.RIGHT;
+                } else if (PoseStorage.alliance == PoseStorage.Alliance.BLUE) {
+                    positionDetected = PositionEnum.LEFT;
+                } else positionDetected = PositionEnum.UNKNOWN;
                 measuredArea = 0;
                 centerOFTarget = null;
             }
@@ -133,18 +140,23 @@ public class CupFinder extends OpenCvPipeline
                 double yScreenRelativeCenter = rectYCenter - input.height()/2.0;
                 centerOFTarget = new Point(xScreenRelativeCenter, yScreenRelativeCenter);
 
-//                if(measuredArea <= RingFinderTestOpMode.NORINGUPPER ) RingsDetected = RingDetectionEnum.ZERO;
-//                else if (measuredArea <= RingFinderTestOpMode.ONERINGUPPER) RingsDetected = RingDetectionEnum.ONE;
-//                else RingsDetected = RingDetectionEnum.FOUR;
+                if(PoseStorage.alliance == PoseStorage.Alliance.RED) {
+                    if (BoundingRectangle.x <= 250) positionDetected = PositionEnum.LEFT;
+                    else positionDetected = PositionEnum.CENTER;
+                } else {
+                    if (BoundingRectangle.x <= 250) positionDetected = PositionEnum.CENTER;
+                    else positionDetected = PositionEnum.RIGHT;
+                }
+
 
                 // Draw a simple box around the rings
                 Scalar rectColor = new Scalar(0, 255, 0);
                 Imgproc.rectangle(outputImageBGR, BoundingRectangle, rectColor, 4);
                 int baseline[]={0};
-                Size textSize = Imgproc.getTextSize(PositionDetected.toString(), Imgproc.FONT_HERSHEY_SIMPLEX, 0.5,2, baseline);
+                Size textSize = Imgproc.getTextSize(positionDetected.toString(), Imgproc.FONT_HERSHEY_SIMPLEX, 0.5,2, baseline);
                 int margin = 2;
                 Point textOrigin = new Point(BoundingRectangle.x + BoundingRectangle.width/2 - textSize.width/2, BoundingRectangle.y - textSize.height - margin);
-                Imgproc.putText(outputImageBGR, PositionDetected.toString(), textOrigin, Imgproc.FONT_HERSHEY_SIMPLEX, 0.5, rectColor, 2);
+                Imgproc.putText(outputImageBGR, positionDetected.toString(), textOrigin, Imgproc.FONT_HERSHEY_SIMPLEX, 0.5, rectColor, 2);
             }
 
             switch (pipelineStageToDisplay) {
@@ -235,5 +247,4 @@ public class CupFinder extends OpenCvPipeline
         boolean savedSuccessfully = Imgcodecs.imwrite(file.toString(), mat);
         return  savedSuccessfully;
     }
-
 }

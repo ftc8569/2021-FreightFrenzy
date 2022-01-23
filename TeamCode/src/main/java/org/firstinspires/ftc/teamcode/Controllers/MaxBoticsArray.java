@@ -8,13 +8,12 @@ import com.qualcomm.robotcore.hardware.configuration.typecontainers.DigitalIoDev
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+import org.firstinspires.ftc.teamcode.Development.PoseStorage;
 
 
 public class MaxBoticsArray {
     private MaxBoticsMB1040 frontSensor, backSensor, leftSensor, rightSensor;
     private DigitalChannelImpl startPin;
-
-    public static boolean isLooping = false;
 
     public MaxBoticsArray(DigitalChannel startPin, AnalogInput frontSensor, AnalogInput backSensor, AnalogInput leftSensor, AnalogInput rightSensor) {
         this.frontSensor = new MaxBoticsMB1040(frontSensor);
@@ -22,21 +21,27 @@ public class MaxBoticsArray {
         this.leftSensor = new MaxBoticsMB1040(leftSensor);
         this.rightSensor = new MaxBoticsMB1040(rightSensor);
         this.startPin = (DigitalChannelImpl) startPin;
+        startPin.setMode(DigitalChannel.Mode.INPUT);
 
-        if(!isLooping) {
-            ElapsedTime timer = new ElapsedTime();
+    }
 
-            startPin.setMode(DigitalChannel.Mode.OUTPUT);
-            startPin.setState(true);
-            timer.reset();
+    public void init() {
+        ElapsedTime timer = new ElapsedTime();
 
-            while (timer.milliseconds() < 1) {
+        startPin.setMode(DigitalChannel.Mode.OUTPUT);
+        startPin.setState(true);
+        timer.reset();
 
-            }
-            startPin.setState(false);
-            startPin.setMode(DigitalChannel.Mode.INPUT);
+        while (timer.milliseconds() < 2) {
+
         }
-        isLooping = true;
+        startPin.setState(false);
+        startPin.setMode(DigitalChannel.Mode.INPUT);
+        PoseStorage.isArrayInit = true;
+    }
+
+    public boolean getInit() {
+        return PoseStorage.isArrayInit;
     }
 
     public double[] getDistances(DistanceUnit unit) {

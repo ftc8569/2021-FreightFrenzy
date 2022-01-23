@@ -7,7 +7,15 @@ public class PoseStorage {
     public enum Alliance {
         RED, BLUE, NEITHER
     }
+    public enum StartingPosition {
+        WAREHOUSE, DUCK, NOT_SET
+    }
+
     public static Alliance alliance = Alliance.NEITHER;
 
+    public static StartingPosition startingPosition = StartingPosition.NOT_SET;
+
     public static double armPos = 0;
+
+    public static boolean isArrayInit = false;
 }
