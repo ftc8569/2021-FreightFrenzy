@@ -21,6 +21,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.teamcode.Controllers.ArmController;
 import org.firstinspires.ftc.teamcode.Controllers.ArmHardware2021;
 import org.firstinspires.ftc.teamcode.Controllers.CupFinder;
+import org.firstinspires.ftc.teamcode.Controllers.FreightSensorController;
 import org.firstinspires.ftc.teamcode.Controllers.LEDController;
 import org.firstinspires.ftc.teamcode.Controllers.RingBuffer;
 import org.firstinspires.ftc.teamcode.Controllers.TeleopHeadingDriftController;
@@ -65,9 +66,9 @@ public class TeleOPV1 extends OpMode {
 
     public static DcMotor.RunMode armMode = DcMotor.RunMode.RUN_TO_POSITION;
 
-    private static boolean intakeOn = false;
-    private static boolean duckWheelOn = false;
-    private static boolean intakeReverse = false;
+    public static boolean intakeOn = false;
+    public static boolean duckWheelOn = false;
+    public static boolean intakeReverse = false;
     private static boolean rumbled = false;
     private static boolean odoUp = false, armServoShut = true;
     private static final boolean driftController = true;
@@ -93,7 +94,7 @@ public class TeleOPV1 extends OpMode {
     double driveOffset = 0, duckDirection = 1, capPos = 0;
 
 //    AnalogInput metalDetector;
-    boolean rumbling = false, matchTimeStarted = false, hasmetal = false, lastHadMetal = false, capDown = false, hasFreight = false;
+    public static boolean rumbling = false, matchTimeStarted = false, hasmetal = false, lastHadMetal = false, capDown = false, hasFreight = false;
 
 
     public enum DrivingMode {
@@ -101,15 +102,11 @@ public class TeleOPV1 extends OpMode {
         CAP
     }
 
-    public enum Freight {
-        BALL,
-        CUBE,
-        NONE
-    }
+
 
     public DrivingMode drivingMode = DrivingMode.NORMAL;
 
-    public Freight freight = Freight.NONE;
+    public FreightSensorController.Freight freight = FreightSensorController.Freight.NONE;
 
     public double drivingSpeed = 1;
 
@@ -119,11 +116,11 @@ public class TeleOPV1 extends OpMode {
 
     LEDController led;
 
-    double freightDist = 0, freightRed = 0, freightGreen = 0, freightBlue = 0, frontFloorDist = 0, backFloorDist = 0;
+    double frontFloorDist = 0, backFloorDist = 0;
 
-    OpenCvWebcam webcam;
+    FreightSensorController FreightSensor;
 
-    CupFinder pipeline;
+
 
     @Override
     public void init() {
@@ -179,6 +176,7 @@ public class TeleOPV1 extends OpMode {
         backFloor = hardwareMap.get(Rev2mDistanceSensor.class, "backFloor");
 
         freightSensor = hardwareMap.get(RevColorSensorV3.class, "freightSensor");
+        FreightSensor = new FreightSensorController(freightSensor);
 
         capServo = hardwareMap.get(Servo.class, "capServo");
         capServo.setDirection(Servo.Direction.REVERSE);
@@ -229,7 +227,7 @@ public class TeleOPV1 extends OpMode {
                     armServo.setPosition(armServoShut ? armServoOpenPos : armServoShutPos);
                     armServoShut = !armServoShut;
                     armServoTimer.reset();
-                    freight = Freight.NONE;
+                    freight = FreightSensorController.Freight.NONE;
                 }
 
                 drivetrain: {
@@ -438,9 +436,9 @@ public class TeleOPV1 extends OpMode {
 
 //        telemetry.addData("MetalDetectorVoltage", metalDetector.getVoltage());
         telemetry.addData("Pose Velocity", drive.getCurrentLocalizer().getPoseVelocity());
-       if(pipeline.BoundingRectangle != null) {
-           telemetry.addData("Rect X, Y", pipeline.BoundingRectangle.x + ", " + pipeline.BoundingRectangle.y);
-       } else  telemetry.addData("Rect X, Y", "null");
+//       if(pipeline.BoundingRectangle != null) {
+//           telemetry.addData("Rect X, Y", pipeline.BoundingRectangle.x + ", " + pipeline.BoundingRectangle.y);
+//       } else  telemetry.addData("Rect X, Y", "null");
 
 
 
@@ -456,19 +454,8 @@ public class TeleOPV1 extends OpMode {
 //            lastHadMetal = hasmetal;
 //            freightDist = freightSensor.getDistance(DistanceUnit.INCH);
 //            freightDists.push(freightDist);
-            freightBlue = freightSensor.blue();
-            freightGreen = freightSensor.green();
-            freightRed = freightSensor.red();
-            double freightAlpha = freightSensor.alpha();
-            double combinedFreight = freightRed + freightGreen + freightBlue + freightAlpha;
-            if(combinedFreight > 500) {
-                if(intakeOn) intakeReverse = true;
-                if(freightRed < 120) {
-                    freight = Freight.BALL;
-                } else {
-                    freight = Freight.CUBE;
-                }
-            }
+            FreightSensor.update();
+            freight = FreightSensor.getFreight() == FreightSensorController.Freight.NONE ? freight : FreightSensor.getFreight();
             switch (freight) {
                 case CUBE:
                     led.setPattern(RevBlinkinLedDriver.BlinkinPattern.ORANGE);
@@ -487,7 +474,8 @@ public class TeleOPV1 extends OpMode {
             //ball: 93, 156, 128, 122
 //            telemetry.addData("ferightDist", freightDist);
 //            telemetry.addData("ferightDists", freightDists.avg());
-            telemetry.addData("freightRGBA", "%s, %s, %s, %s", freightRed, freightGreen, freightBlue, freightAlpha);
+            telemetry.addData("freightRGBA", "%s, %s, %s, %s", FreightSensor.red, FreightSensor.green, FreightSensor.blue, FreightSensor.alpha);
+            telemetry.addData("combined Freight", FreightSensor.getSum());
             frontFloorDist = frontFloor.getDistance(DistanceUnit.INCH);
             backFloorDist = backFloor.getDistance(DistanceUnit.INCH);
 

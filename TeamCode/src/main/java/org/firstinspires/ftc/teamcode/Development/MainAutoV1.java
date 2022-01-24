@@ -21,6 +21,7 @@ import org.firstinspires.ftc.teamcode.roadrunner.drive.SampleMecanumDrive;
 import org.openftc.easyopencv.OpenCvCamera;
 import org.openftc.easyopencv.OpenCvCameraFactory;
 import org.openftc.easyopencv.OpenCvCameraRotation;
+import org.openftc.easyopencv.OpenCvWebcam;
 
 import java.util.HashMap;
 
@@ -37,6 +38,10 @@ public class MainAutoV1 extends TeleOPV1 {
     ElapsedTime deliveryTimer = new ElapsedTime();
 
     public boolean webcamStreaming = false;
+
+    OpenCvWebcam webcam;
+
+    CupFinder pipeline;
 
 
     @Override
@@ -135,14 +140,20 @@ public class MainAutoV1 extends TeleOPV1 {
             webcam.closeCameraDeviceAsync(()->{});
             FtcDashboard.getInstance().stopCameraStream();
             webcamStreaming = false;
+            led.setPattern(RevBlinkinLedDriver.BlinkinPattern.HOT_PINK);
         }
         drive.update();
         telemetry.addData("Busy?", drive.isBusy());
         telemetry.addData("bestLocalizer", drive.getCurrentLocalizer().getBestCurrentLocalizer().toString());
         telemetry.addData("pose", drive.getPoseEstimate().toString());
+        telemetry.addData("freightRGBA", "%s, %s, %s, %s", FreightSensor.red, FreightSensor.green, FreightSensor.blue, FreightSensor.alpha);
+        telemetry.addData("combined Freight", FreightSensor.getSum());
 
         PoseStorage.endPose = drive.getPoseEstimate();
         PoseStorage.armPos = armController.getPosition();
+
+        if(intakeOn) intakeMotor.setPower(intakeReverse ? -intakeOutSpeed: intakeSpeed); else intakeMotor.setPower(0);
+
 
         switch (PoseStorage.startingPosition) {
             case WAREHOUSE: {
@@ -176,7 +187,7 @@ public class MainAutoV1 extends TeleOPV1 {
                                 break;
                             }
                             case delivering: {
-                                if(deliveryTimer.seconds() > 2) {
+                                if(deliveryTimer.seconds() > .75) {
                                     redWarehousePaths.setPath(RedWarehousePaths.Paths.intoWarehouse);
                                     armServo.setPosition(armServoShutPos);
                                     switch (position) {
@@ -196,10 +207,27 @@ public class MainAutoV1 extends TeleOPV1 {
                                 break;
                             }
                             case intoWarehouse: {
-                                if(!drive.isBusy()) {
+                                FreightSensor.update();
+                                freight = FreightSensor.getFreight();
+                                hasFreight = FreightSensor.hasFreight();
+                                switch (freight) {
+                                    case CUBE:
+                                        led.setPattern(RevBlinkinLedDriver.BlinkinPattern.ORANGE);
+                                        break;
+                                    case BALL:
+                                        led.setPattern(RevBlinkinLedDriver.BlinkinPattern.WHITE);
+                                        break;
+                                    case NONE:
+                                        led.setPattern(RevBlinkinLedDriver.BlinkinPattern.HOT_PINK);
+                                        break;
+                                }
+
+                                if(!drive.isBusy() || hasFreight) {
+                                    drive.cancel();
                                     redWarehousePaths.setPath(RedWarehousePaths.Paths.toHub2);
                                     drive.followTrajectorySequenceAsync(redWarehousePaths.toHub2);
-                                    intakeMotor.setPower(intakeOutSpeed);
+                                    intakeOn = true;
+                                    intakeReverse = true;
                                 }
                                 break;
                             }
@@ -212,7 +240,7 @@ public class MainAutoV1 extends TeleOPV1 {
                                 break;
                             }
                             case delivering2: {
-                                if(deliveryTimer.seconds() > 2) {
+                                if(deliveryTimer.seconds() > .75) {
                                     armServo.setPosition(armServoShutPos);
                                     redWarehousePaths.setPath(RedWarehousePaths.Paths.intoWarehouse2);
                                     drive.followTrajectorySequenceAsync(redWarehousePaths.intoWarehouse2);
