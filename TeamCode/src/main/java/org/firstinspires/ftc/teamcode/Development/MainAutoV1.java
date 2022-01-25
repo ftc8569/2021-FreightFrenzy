@@ -28,9 +28,6 @@ import java.util.HashMap;
 @Autonomous
 public class MainAutoV1 extends TeleOPV1 {
 
-    public static Pose2d startPose = new Pose2d(-41, -63, Math.toRadians(90));
-
-
     CupFinder.PositionEnum position = CupFinder.PositionEnum.UNKNOWN;
 
     RedWarehousePaths redWarehousePaths;
@@ -43,10 +40,24 @@ public class MainAutoV1 extends TeleOPV1 {
 
     CupFinder pipeline;
 
+    public final int CYCLE_COUNT = 2;
+
+    public static double armStartPos,
+            armTopPos,
+            armMiddlePos,
+            armBottomPos;
+
 
     @Override
     public void init() {
         super.init();
+
+        PoseStorage.armPos = 0;
+
+        this.armStartPos = TeleOPV1.armStartPos;
+        this.armTopPos = TeleOPV1.armTopPos;
+        this.armMiddlePos = TeleOPV1.armMiddlePos;
+        this.armBottomPos = TeleOPV1.armBottomPos;
 
         webcam:
         {
@@ -144,10 +155,11 @@ public class MainAutoV1 extends TeleOPV1 {
         }
         drive.update();
         telemetry.addData("Busy?", drive.isBusy());
-        telemetry.addData("bestLocalizer", drive.getCurrentLocalizer().getBestCurrentLocalizer().toString());
+//        telemetry.addData("bestLocalizer", drive.getCurrentLocalizer().getBestCurrentLocalizer().toString());
         telemetry.addData("pose", drive.getPoseEstimate().toString());
         telemetry.addData("freightRGBA", "%s, %s, %s, %s", FreightSensor.red, FreightSensor.green, FreightSensor.blue, FreightSensor.alpha);
         telemetry.addData("combined Freight", FreightSensor.getSum());
+        telemetry.addData("Current Path", redWarehousePaths.getPath().toString());
 
         PoseStorage.endPose = drive.getPoseEstimate();
         PoseStorage.armPos = armController.getPosition();
@@ -222,7 +234,7 @@ public class MainAutoV1 extends TeleOPV1 {
                                         break;
                                 }
 
-                                if(!drive.isBusy() || hasFreight) {
+                                if(!drive.isBusy()) {
                                     drive.cancel();
                                     redWarehousePaths.setPath(RedWarehousePaths.Paths.toHub2);
                                     drive.followTrajectorySequenceAsync(redWarehousePaths.toHub2);
@@ -236,6 +248,7 @@ public class MainAutoV1 extends TeleOPV1 {
                                     redWarehousePaths.setPath(RedWarehousePaths.Paths.delivering2);
                                     armServo.setPosition(armServoOpenPos);
                                     deliveryTimer.reset();
+
                                 }
                                 break;
                             }
@@ -246,12 +259,54 @@ public class MainAutoV1 extends TeleOPV1 {
                                     drive.followTrajectorySequenceAsync(redWarehousePaths.intoWarehouse2);
                                 }
                                 break;
-
                             }
                             case intoWarehouse2: {
+                                FreightSensor.update();
+                                freight = FreightSensor.getFreight();
+                                hasFreight = FreightSensor.hasFreight();
+                                switch (freight) {
+                                    case CUBE:
+                                        led.setPattern(RevBlinkinLedDriver.BlinkinPattern.ORANGE);
+                                        break;
+                                    case BALL:
+                                        led.setPattern(RevBlinkinLedDriver.BlinkinPattern.WHITE);
+                                        break;
+                                    case NONE:
+                                        led.setPattern(RevBlinkinLedDriver.BlinkinPattern.HOT_PINK);
+                                        break;
+                                }
+
                                 if(!drive.isBusy()) {
+                                    drive.cancel();
+                                    redWarehousePaths.setPath(RedWarehousePaths.Paths.toHub3);
+                                    drive.followTrajectorySequenceAsync(redWarehousePaths.toHub3);
+                                    intakeOn = true;
+                                    intakeReverse = true;
+                                }
+                                break;
+                            }
+                            case toHub3: {
+                                if(!drive.isBusy()) {
+                                    redWarehousePaths.setPath(RedWarehousePaths.Paths.delivering3);
+                                    armServo.setPosition(armServoOpenPos);
+                                    deliveryTimer.reset();
+                                }
+                                break;
+                            }
+                            case delivering3: {
+                                    if(deliveryTimer.seconds() > .75) {
+                                        armServo.setPosition(armServoShutPos);
+                                        redWarehousePaths.setPath(RedWarehousePaths.Paths.intoWarehouse3);
+                                        drive.followTrajectorySequenceAsync(redWarehousePaths.intoWarehouse3);
+                                }
+                                    break;
+                            }
+                            case intoWarehouse3: {
+                                if(!drive.isBusy()) {
+                                    redWarehousePaths.setPath(RedWarehousePaths.Paths.start);
                                     requestOpModeStop();
                                 }
+                                break;
                             }
                         }
                     }

@@ -80,8 +80,8 @@ public class SampleMecanumDrive extends MecanumDrive {
     public static double OMEGA_WEIGHT = 1;
 
     public static double FOLLOWER_TIMEOUT = .25;
-    public static double FOLLOWER_HEADING_TOLERANCE = Math.toRadians(0.5);
-    public static double FOLLOWER_POSITION_TOLERANCE = 0.25;
+    public static double FOLLOWER_HEADING_TOLERANCE = Math.toRadians(1);
+    public static double FOLLOWER_POSITION_TOLERANCE = 0.5;
 
     public static double HEADING_LOW_PASS_CONSTANT = .75; //1 means fully the current value, 0 means fully the previous value
 

@@ -39,8 +39,8 @@ import java.util.HashMap;
 
 public class TeleOPV1 extends OpMode {
 
-    public static double driveExp = 2; // The power to raise all driving movements to. Specifically
-    public static boolean expTranslation = true; //useful for turning but can definitely help with translation as well
+    public final double driveExp = 2; // The power to raise all driving movements to. Specifically
+    public final boolean expTranslation = true; //useful for turning but can definitely help with translation as well
 
     public static double intakeSpeed = 1,
                          intakeOutSpeed = .4,
@@ -59,12 +59,12 @@ public class TeleOPV1 extends OpMode {
                          capDownDownPos = 0.165,
                          capNormalPos = 0.5;
 
-    public static PIDFCoefficients headingControllerCoefficients = new PIDFCoefficients(.012, 0.005, 0.001, 0);
+    public final PIDFCoefficients headingControllerCoefficients = new PIDFCoefficients(.012, 0.005, 0.001, 0);
 
     //testing this
-    public static double outputFilter = 0, outputRamp = 0;
+    public final double outputFilter = 0, outputRamp = 0;
 
-    public static DcMotor.RunMode armMode = DcMotor.RunMode.RUN_TO_POSITION;
+    public final DcMotor.RunMode armMode = DcMotor.RunMode.RUN_TO_POSITION;
 
     public static boolean intakeOn = false;
     public static boolean duckWheelOn = false;
@@ -74,7 +74,7 @@ public class TeleOPV1 extends OpMode {
     private static final boolean driftController = true;
 
 
-    public static DcMotorEx intakeMotor, duckWheelMotor, duckWheelMotor2;
+    public DcMotorEx intakeMotor, duckWheelMotor, duckWheelMotor2;
     //duckWheel port 0 expansion hub
     //intake port 1 on expansion hub
 
@@ -316,10 +316,10 @@ public class TeleOPV1 extends OpMode {
 //                    armController.setPower(-gamepad1.right_stick_y);
 //                } else
                     if(gamepad2.dpad_right || gamepad2.dpad_left || gamepad2.dpad_up || gamepad2.dpad_down){
-                        if(armMode != DcMotor.RunMode.RUN_TO_POSITION) {
-                            armMode = DcMotor.RunMode.RUN_TO_POSITION;
-                            armController.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-                        }
+//                        if(armMode != DcMotor.RunMode.RUN_TO_POSITION) {
+//                            armMode = DcMotor.RunMode.RUN_TO_POSITION;
+//                            armController.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+//                        }
                         armController.setPower(ArmController.armSetPosPower);
                         if(gamepad2.dpad_up) {
                             armController.setPosition((int) (armTopPos - PoseStorage.armPos));
@@ -343,18 +343,18 @@ public class TeleOPV1 extends OpMode {
                 }
             } else {
                 arm: {
-                if (Math.abs(gamepad1.right_stick_y) > .05) {
-                    if(armMode != DcMotor.RunMode.RUN_USING_ENCODER) {
-                        armMode = DcMotor.RunMode.RUN_USING_ENCODER;
-                        armController.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-                    }
-                    armController.setPower(-gamepad1.right_stick_y);
-                } else
+//                if (Math.abs(gamepad1.right_stick_y) > .05) {
+//                    if(armMode != DcMotor.RunMode.RUN_USING_ENCODER) {
+//                        armMode = DcMotor.RunMode.RUN_USING_ENCODER;
+//                        armController.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+//                    }
+//                    armController.setPower(-gamepad1.right_stick_y);
+//                } else
                     if(gamepad2.dpad_right || gamepad2.dpad_left || gamepad2.dpad_up || gamepad2.dpad_down){
-                        if(armMode != DcMotor.RunMode.RUN_TO_POSITION) {
-                            armMode = DcMotor.RunMode.RUN_TO_POSITION;
-                            armController.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-                        }
+//                        if(armMode != DcMotor.RunMode.RUN_TO_POSITION) {
+//                            armMode = DcMotor.RunMode.RUN_TO_POSITION;
+//                            armController.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+//                        }
                         armController.setPower(ArmController.armSetPosPower);
                         if(gamepad2.dpad_up) armController.setPosition((int) (armCapUpPos));
                         if(gamepad2.dpad_left) {
