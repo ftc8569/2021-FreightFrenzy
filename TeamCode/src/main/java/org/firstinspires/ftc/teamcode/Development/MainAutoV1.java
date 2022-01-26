@@ -28,7 +28,7 @@ import java.util.HashMap;
 @Autonomous
 public class MainAutoV1 extends TeleOPV1 {
 
-    CupFinder.PositionEnum position = CupFinder.PositionEnum.UNKNOWN;
+    public static CupFinder.PositionEnum position = CupFinder.PositionEnum.UNKNOWN;
 
     RedWarehousePaths redWarehousePaths;
 
@@ -238,8 +238,6 @@ public class MainAutoV1 extends TeleOPV1 {
                                     drive.cancel();
                                     redWarehousePaths.setPath(RedWarehousePaths.Paths.toHub2);
                                     drive.followTrajectorySequenceAsync(redWarehousePaths.toHub2);
-                                    intakeOn = true;
-                                    intakeReverse = true;
                                 }
                                 break;
                             }
@@ -280,8 +278,6 @@ public class MainAutoV1 extends TeleOPV1 {
                                     drive.cancel();
                                     redWarehousePaths.setPath(RedWarehousePaths.Paths.toHub3);
                                     drive.followTrajectorySequenceAsync(redWarehousePaths.toHub3);
-                                    intakeOn = true;
-                                    intakeReverse = true;
                                 }
                                 break;
                             }
