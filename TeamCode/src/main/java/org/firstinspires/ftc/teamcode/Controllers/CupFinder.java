@@ -126,9 +126,27 @@ public class CupFinder extends OpenCvPipeline
             if(BoundingRectangle == null) {
                 if(PoseStorage.alliance == PoseStorage.Alliance.RED){
                     positionDetected = PositionEnum.RIGHT;
+
+                    Scalar rectColor = new Scalar(0, 255, 0);
+                    int[] baseline ={0};
+                    Size textSize = Imgproc.getTextSize(positionDetected.toString(), Imgproc.FONT_HERSHEY_SIMPLEX, 0.5,2, baseline);
+                    Point textOrigin = new Point(input.width() - textSize.width, input.height()/2.0);
+                    Imgproc.putText(outputImageBGR, positionDetected.toString(), textOrigin, Imgproc.FONT_HERSHEY_SIMPLEX, 0.5, rectColor, 2);
                 } else if (PoseStorage.alliance == PoseStorage.Alliance.BLUE) {
                     positionDetected = PositionEnum.LEFT;
-                } else positionDetected = PositionEnum.UNKNOWN;
+
+                    Scalar rectColor = new Scalar(0, 255, 0);
+                    int[] baseline ={0};
+                    Size textSize = Imgproc.getTextSize(positionDetected.toString(), Imgproc.FONT_HERSHEY_SIMPLEX, 0.5,2, baseline);
+                    Point textOrigin = new Point(textSize.width, input.height()/2.0);
+                    Imgproc.putText(outputImageBGR, positionDetected.toString(), textOrigin, Imgproc.FONT_HERSHEY_SIMPLEX, 0.5, rectColor, 2);
+                } else {
+                    positionDetected = PositionEnum.UNKNOWN;
+
+                    Scalar rectColor = new Scalar(0, 255, 0);
+                    Point textOrigin = new Point(input.width()/2.0, input.height()/2.0);
+                    Imgproc.putText(outputImageBGR, positionDetected.toString(), textOrigin, Imgproc.FONT_HERSHEY_SIMPLEX, 0.5, rectColor, 2);
+                }
                 measuredArea = 0;
                 centerOFTarget = null;
             }
