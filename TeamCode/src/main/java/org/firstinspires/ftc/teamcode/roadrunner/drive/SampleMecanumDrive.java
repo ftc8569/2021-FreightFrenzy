@@ -36,6 +36,7 @@ import com.qualcomm.robotcore.hardware.configuration.typecontainers.MotorConfigu
 
 import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
 import org.firstinspires.ftc.teamcode.Controllers.DistanceSensorArrayLocalizer;
+import org.firstinspires.ftc.teamcode.Controllers.KalmanLocalizer;
 import org.firstinspires.ftc.teamcode.Controllers.MaxBoticsArray;
 import org.firstinspires.ftc.teamcode.Controllers.MaxBoticsMB1040;
 import org.firstinspires.ftc.teamcode.Controllers.OdoMechDistLocalizer;
@@ -109,7 +110,7 @@ public class SampleMecanumDrive extends MecanumDrive {
     TwoWheelTrackingLocalizer odolocalizer;
     MecanumLocalizer wheelLocalizer;
     DistanceSensorArrayLocalizer distLocalizer;
-    OdoMechDistLocalizer localizer;
+    KalmanLocalizer localizer;
     OdoRetractionController retractionController;
 
     public SampleMecanumDrive(HardwareMap hardwareMap) {
@@ -185,7 +186,7 @@ public class SampleMecanumDrive extends MecanumDrive {
         wheelLocalizer = new MecanumLocalizer(this, true);
         odolocalizer = new TwoWheelTrackingLocalizer(hardwareMap, this);
 
-        localizer = new OdoMechDistLocalizer(this, hardwareMap, odolocalizer, wheelLocalizer, distLocalizer, retractionController);
+        localizer = new KalmanLocalizer(this, odolocalizer, wheelLocalizer, distLocalizer, retractionController);
 
 
         // TODO: reverse any motors using DcMotor.setDirection()
@@ -275,7 +276,6 @@ public class SampleMecanumDrive extends MecanumDrive {
 //        packet.put("Filtered Velo", filteredVelo);
 //        packet.put("wheel positions", String.format("Parallel %.2f, Perpendicular %.2f", odolocalizer.getWheelPositions().get(0), odolocalizer.getWheelPositions().get(1)));
 //        packet.put("Distances FBLR", Arrays.toString(localizer.getDistances()));
-        packet.put("Best Localizer", localizer.getBestCurrentLocalizer());
 //        packet.put("Best Estimate", localizer.getPoseEstimate());
 //        packet.put("Distance Sesnor Estimate", localizer.getDistEstimate());
 //        packet.put("Mecanum Localizer Estimate", localizer.getWheelEstimate());
@@ -455,7 +455,7 @@ public class SampleMecanumDrive extends MecanumDrive {
     }
 
 
-    public OdoMechDistLocalizer getCurrentLocalizer() {
+    public KalmanLocalizer getCurrentLocalizer() {
         return localizer;
     }
 

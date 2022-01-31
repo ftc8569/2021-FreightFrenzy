@@ -84,7 +84,7 @@ public class RedDuckAutoWarehouse extends TeleOPV1 {
         drive.update();
         telemetry.addData("Busy?", drive.isBusy());
         telemetry.addData("State", state.toString());
-        telemetry.addData("bestLocalizer", drive.getCurrentLocalizer().getBestCurrentLocalizer().toString());
+//        telemetry.addData("bestLocalizer", drive.getCurrentLocalizer().getBestCurrentLocalizer().toString());
         telemetry.addData("pose", drive.getPoseEstimate().toString());
 
         PoseStorage.endPose = drive.getPoseEstimate();

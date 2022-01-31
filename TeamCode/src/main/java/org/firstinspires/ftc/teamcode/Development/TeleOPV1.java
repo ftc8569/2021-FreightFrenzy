@@ -488,7 +488,7 @@ public class TeleOPV1 extends OpMode {
 
 
         telemetry.addData("Distances FBLR", Arrays.toString(drive.getCurrentLocalizer().getDistances()));
-        telemetry.addData("Best Localizer", drive.getCurrentLocalizer().getBestCurrentLocalizer());
+//        telemetry.addData("Best Localizer", drive.getCurrentLocalizer().getBestCurrentLocalizer());
         telemetry.addData("Best Estimate", drive.getCurrentLocalizer().getPoseEstimate());
         telemetry.addData("Distance Sesnor Estimate", drive.getCurrentLocalizer().getDistEstimate());
         telemetry.addData("Mecanum Localizer Estimate", drive.getCurrentLocalizer().getWheelEstimate());
