@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.Controllers;
 
+import com.acmerobotics.roadrunner.util.Angle;
+
 import org.apache.commons.math3.exception.DimensionMismatchException;
 import org.apache.commons.math3.exception.NullArgumentException;
 import org.apache.commons.math3.filter.MeasurementModel;
@@ -241,6 +243,8 @@ public class AdjustableKalmanFilter {
         // xHat(k)- = A * xHat(k-1) + B * u(k-1)
         stateEstimation = transitionMatrix.operate(stateEstimation);
 
+        stateEstimation.setEntry(5, Angle.normDelta(stateEstimation.getEntry(5)));
+
         // add control input if it is available
         if (u != null) {
             stateEstimation = stateEstimation.add(controlMatrix.operate(u));
@@ -285,6 +289,7 @@ public class AdjustableKalmanFilter {
     public void correct(final RealVector z)
             throws NullArgumentException, DimensionMismatchException, SingularMatrixException {
 
+        z.setEntry(5, Angle.normDelta(z.getEntry(5)));
         // sanity checks
         MathUtils.checkNotNull(z);
         if (z.getDimension() != measurementMatrix.getRowDimension()) {
@@ -299,6 +304,13 @@ public class AdjustableKalmanFilter {
 
         // Inn = z(k) - H * xHat(k)-
         RealVector innovation = z.subtract(measurementMatrix.operate(stateEstimation));
+
+        double current = z.getEntry(5), last = stateEstimation.getEntry(5);
+
+        double error = Math.toDegrees(Math.atan2(Math.sin(current - last), Math.cos(current - last)));
+        innovation.setEntry(5, Angle.normDelta(error));
+
+
 
         // calculate gain matrix
         // K(k) = P(k)- * H' * (H * P(k)- * H' + R)^-1
@@ -316,6 +328,7 @@ public class AdjustableKalmanFilter {
         // update estimate with measurement z(k)
         // xHat(k) = xHat(k)- + K * Inn
         stateEstimation = stateEstimation.add(kalmanGain.operate(innovation));
+        stateEstimation.setEntry(5, Angle.normDelta(stateEstimation.getEntry(5)));
 
         // update covariance of prediction error
         // P(k) = (I - K * H) * P(k)-

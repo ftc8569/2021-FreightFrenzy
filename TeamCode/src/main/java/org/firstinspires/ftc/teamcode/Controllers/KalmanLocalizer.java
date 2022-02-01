@@ -3,16 +3,13 @@ package org.firstinspires.ftc.teamcode.Controllers;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.roadrunner.drive.MecanumDrive;
 import com.acmerobotics.roadrunner.geometry.Pose2d;
 import com.acmerobotics.roadrunner.localization.Localizer;
 import com.acmerobotics.roadrunner.localization.TwoTrackingWheelLocalizer;
-import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
-import org.apache.commons.math3.filter.DefaultMeasurementModel;
-import org.apache.commons.math3.filter.DefaultProcessModel;
-import org.apache.commons.math3.filter.KalmanFilter;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.ArrayRealVector;
 import org.apache.commons.math3.linear.RealMatrix;
@@ -21,10 +18,18 @@ import org.firstinspires.ftc.teamcode.roadrunner.drive.SampleMecanumDrive;
 import org.firstinspires.ftc.teamcode.roadrunner.drive.TwoWheelTrackingLocalizer;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
-
+@Config
 public class KalmanLocalizer implements Localizer {
+    public static double processUncertainty = 10;
+
+   //we will currently assume our velocity uncertainty is the same as our position.
+            // This is not true but I do not think we will pass it velocity - the localizer is weird.
+    public static double measUncTranslation = 2, measUncTheta = Math.toRadians(.25);
 
     SampleMecanumDrive drive;
     TwoTrackingWheelLocalizer odoLocalizer;
@@ -58,7 +63,6 @@ public class KalmanLocalizer implements Localizer {
 
     //TODO: FIGURE THIS OUT A LITTLE BETTER
     //guesstimate of the std dev of our acceleration model in in/s^2
-    double processUncertainty = 7.5;
 
     RealMatrix processNoise = new Array2DRowRealMatrix(new double[][]{
             {Math.pow(deltaTime,4)/4,Math.pow(deltaTime,3)/2, Math.pow(deltaTime,2)/2, 0, 0, 0, 0, 0, 0},
@@ -99,13 +103,13 @@ public class KalmanLocalizer implements Localizer {
     });
 
     RealMatrix resetStateCovarError = new Array2DRowRealMatrix(new double[][] {
-            {resetStateError, 0, 0, 0, 0, 0, 0, 0, 0},
+            {initialStateError, 0, 0, 0, 0, 0, 0, 0, 0},
             {0, resetStateError, 0, 0, 0, 0, 0, 0, 0},
             {0, 0, resetStateError, 0, 0, 0, 0, 0, 0},
-            {0, 0, 0, resetStateError, 0, 0, 0, 0, 0},
+            {0, 0, 0, initialStateError, 0, 0, 0, 0, 0},
             {0, 0, 0, 0, resetStateError, 0, 0, 0, 0},
             {0, 0, 0, 0, 0, resetStateError, 0, 0, 0},
-            {0, 0, 0, 0, 0, 0, resetStateError, 0, 0},
+            {0, 0, 0, 0, 0, 0, initialStateError, 0, 0},
             {0, 0, 0, 0, 0, 0, 0, resetStateError, 0},
             {0, 0, 0, 0, 0, 0, 0, 0, resetStateError}
     });
@@ -121,19 +125,19 @@ public class KalmanLocalizer implements Localizer {
             {0, 0, 0, 0, 0, 0, 0, 1, 0}
     });
 
-    //we will currently assume our velocity uncertainty is the same as our position.
-    // This is not true but I do not think we will pass it velocity - the localizer is weird.
-    double measUncX = 2, measUncY = 2, measUncTheta = Math.toRadians(.5);
+
+
+    double measurementUncertainty = measUncTranslation;
 
     //troubleshooting, ignore weird values
     //TODO: do some bench top measurements on our uncertainty here. A bit hard to do but we can get the idea.
     RealMatrix measurementUncertaintyMatrix = new Array2DRowRealMatrix(new double[][]{
-            {Math.pow(measUncX, 2), 0, 0, 0, 0, 0},
-            {0, Math.pow(measUncX, 2), 0, 0, 0, 0},
-            {0, 0, Math.pow(measUncX, 2), 0, 0, 0},
-            {0, 0, 0, Math.pow(measUncX, 2), 0, 0},
-            {0, 0, 0, 0, Math.pow(measUncX, 2), 0},
-            {0, 0, 0, 0, 0, Math.pow(measUncX, 2)},
+            {Math.pow(measurementUncertainty, 2), 0, 0, 0, 0, 0},
+            {0, Math.pow(measurementUncertainty, 2), 0, 0, 0, 0},
+            {0, 0, Math.pow(measurementUncertainty, 2), 0, 0, 0},
+            {0, 0, 0, Math.pow(measurementUncertainty, 2), 0, 0},
+            {0, 0, 0, 0, Math.pow(measurementUncertainty, 2), 0},
+            {0, 0, 0, 0, 0, Math.pow(measurementUncertainty, 2)},
     });
 
     AdjustableMeasurementModel mm;
@@ -150,17 +154,21 @@ public class KalmanLocalizer implements Localizer {
     //to stop giving velo information, swap the top line for the bottom commented one for right now
     RealVector odoMeasureVector = new ArrayRealVector(new double[]{
 //            odoEstimate.getX(), odoVeloEstimate.getX(), odoEstimate.getY(), odoVeloEstimate.getY(), odoEstimate.getHeading(), odoVeloEstimate.getHeading()
-          odoEstimate.getX(), 0, odoEstimate.getY(), 0, odoEstimate.getHeading(), 0
+          odoEstimate.getX(), 0, odoEstimate.getY(), 0, 0, 0
     });
 
     //to stop giving pose information, swap the last 3 values for 0s
     RealVector wheelMeasureVector = new ArrayRealVector(new double[]{
 //            wheelEstimate.getX(), wheelVeloEstimate.getX(), wheelEstimate.getY(), wheelVeloEstimate.getY(), wheelEstimate.getHeading(), wheelVeloEstimate.getHeading()
-          wheelEstimate.getX(), 0, wheelEstimate.getY(), 0, wheelEstimate.getHeading(), 0
+          wheelEstimate.getX(), 0, wheelEstimate.getY(), 0, 0, 0
     });
 
-    RealVector distMeasureVector = new ArrayRealVector(new Double[]{
-            distEstimate.getX(), 0.0, distEstimate.getY(), 0.0, distEstimate.getHeading(), 0.0
+    RealVector distMeasureVector = new ArrayRealVector(new double[]{
+            distEstimate.getX(), 0.0, distEstimate.getY(), 0.0, 0.0, 0.0
+    });
+
+    RealVector headingMeasureVector = new ArrayRealVector(new double[]{
+            0, 0, 0, 0, odoEstimate.getHeading(), 0
     });
 
     public KalmanLocalizer(@NotNull SampleMecanumDrive drive, @NotNull TwoWheelTrackingLocalizer odoLocalizer,
@@ -208,7 +216,12 @@ public class KalmanLocalizer implements Localizer {
             init = true;
         } else deltaTime = timer.seconds();
 
+        odoLocalizer.update();
+        wheelLocalizer.update();
+
 //        odoVeloEstimate = odoRetractionController.isUp() ? new Pose2d() : odoLocalizer.getPoseVelocity();
+
+        measurementUncertainty = measUncTranslation;
 
         wheelEstimate = wheelLocalizer.getPoseEstimate();
 //        wheelVeloEstimate = wheelLocalizer.getPoseVelocity();
@@ -233,6 +246,7 @@ public class KalmanLocalizer implements Localizer {
 
         distLocalizer.setPoseEstimate(bestEstimate);
         distLocalizer.setPoseVelocity(Objects.requireNonNull(getPoseVelocity()));
+        distLocalizer.update();
         distEstimate = distLocalizer.getPoseEstimate();
 
 //        if(!distEstimate.equals(new Pose2d())) {
@@ -242,6 +256,18 @@ public class KalmanLocalizer implements Localizer {
 //            filter.correct(distMeasureVector);
 //        }
 
+        measurementUncertainty = measUncTheta;
+
+        odoEstimate = odoLocalizer.getPoseEstimate();
+
+        deltaTime = timer.seconds();
+        filter.predict();
+        updateVectors();
+        filter.correct(headingMeasureVector);
+
+        HashMap<String, Object> map = new HashMap<>();
+        map.put("Heading Estimate", String.valueOf(headingMeasureVector.getEntry(5)));
+        map.put("state Estimate", Arrays.toString(stateEstimate));
         timer.reset();
         stateEstimate = filter.getStateEstimation();
         bestEstimate = new Pose2d(stateEstimate[0], stateEstimate[3], stateEstimate[6]);
@@ -257,15 +283,18 @@ public class KalmanLocalizer implements Localizer {
     private void updateVectors() {
         odoMeasureVector = new ArrayRealVector(new double[]{
 //                odoEstimate.getX(), odoVeloEstimate.getX(), odoEstimate.getY(), odoVeloEstimate.getY(), odoEstimate.getHeading(), odoVeloEstimate.getHeading()
-          odoEstimate.getX(), 0, odoEstimate.getY(), 0, odoEstimate.getHeading(), 0
+          odoEstimate.getX(), 0, odoEstimate.getY(), 0, 0, 0
         });
 
         wheelMeasureVector = new ArrayRealVector(new double[]{
 //                wheelEstimate.getX(), wheelVeloEstimate.getX(), wheelEstimate.getY(), wheelVeloEstimate.getY(), wheelEstimate.getHeading(), wheelVeloEstimate.getHeading()
-          wheelEstimate.getX(), 0, wheelEstimate.getY(), 0, wheelEstimate.getHeading(), 0
+          wheelEstimate.getX(), 0, wheelEstimate.getY(), 0, 0, 0
         });
         distMeasureVector = new ArrayRealVector(new Double[]{
                 distEstimate.getX(), 0.0, distEstimate.getY(), 0.0, distEstimate.getHeading(), 0.0
+        });
+        headingMeasureVector = new ArrayRealVector(new double[]{
+                0, 0, 0, 0, odoEstimate.getHeading(), 0
         });
 
         //we have to recalculate our matrices that are dependant on deltaT every loop and put them into our filter.

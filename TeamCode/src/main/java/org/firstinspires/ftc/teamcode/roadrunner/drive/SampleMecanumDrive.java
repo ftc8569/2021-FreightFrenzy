@@ -275,12 +275,14 @@ public class SampleMecanumDrive extends MecanumDrive {
 //        packet.put("Filtered Heading", filteredHeading);
 //        packet.put("Original Velo", headingVeloAvg);
 //        packet.put("Filtered Velo", filteredVelo);
-//        packet.put("wheel positions", String.format("Parallel %.2f, Perpendicular %.2f", odolocalizer.getWheelPositions().get(0), odolocalizer.getWheelPositions().get(1)));
-//        packet.put("Distances FBLR", Arrays.toString(localizer.getDistances()));
-//        packet.put("Best Estimate", localizer.getPoseEstimate());
-//        packet.put("Distance Sesnor Estimate", localizer.getDistEstimate());
-//        packet.put("Mecanum Localizer Estimate", localizer.getWheelEstimate());
-//        packet.put("Odometry Localizer Estimate", localizer.getOdoEstimate());
+        packet.put("externalHeading", Math.toDegrees(getExternalHeading()));
+        packet.put("wheel positions", String.format("Parallel %.2f, Perpendicular %.2f", odolocalizer.getWheelPositions().get(0), odolocalizer.getWheelPositions().get(1)));
+        packet.put("Distances FBLR", Arrays.toString(localizer.getDistances()));
+        packet.put("Best Estimate", localizer.getPoseEstimate());
+        packet.put("Distance Sesnor Estimate", localizer.getDistEstimate());
+        packet.put("Mecanum Localizer Estimate", localizer.getWheelEstimate());
+        packet.put("Odometry Localizer Estimate", localizer.getOdoEstimate());
+
         dashboard.sendTelemetryPacket(packet);
     }
 

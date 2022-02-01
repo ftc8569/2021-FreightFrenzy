@@ -60,7 +60,9 @@ public class TeleOPV1 extends OpMode {
                          capCappedPos = .101,
                          capDownPos = 0.25,
                          capDownDownPos = 0.165,
-                         capNormalPos = 0.5;
+                         capNormalPos = 0.5,
+                         fastDrivingSpeed = .9,
+                         slowedDrivingSpeed = .5;
 
     public final PIDFCoefficients headingControllerCoefficients = new PIDFCoefficients(.012, 0.005, 0.001, 0);
 
@@ -111,7 +113,7 @@ public class TeleOPV1 extends OpMode {
 
     public FreightSensorController.Freight freight = FreightSensorController.Freight.NONE;
 
-    public double drivingSpeed = 1;
+    public double drivingSpeed = fastDrivingSpeed;
 
     Rev2mDistanceSensor frontFloor, backFloor;
 
@@ -285,7 +287,7 @@ public class TeleOPV1 extends OpMode {
 //            controller.setTargetPose(desAng);
 //        }
                     if(gamepad1.x && speedSwap.seconds() > .5) {
-                        drivingSpeed = drivingSpeed == 1 ? .5 : 1;
+                        drivingSpeed = drivingSpeed == fastDrivingSpeed ? slowedDrivingSpeed : fastDrivingSpeed;
                         speedSwap.reset();
                     }
                 }
