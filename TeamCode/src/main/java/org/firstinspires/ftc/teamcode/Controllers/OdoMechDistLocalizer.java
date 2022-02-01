@@ -36,11 +36,10 @@ public class OdoMechDistLocalizer implements Localizer {
     private double offset = 0;
 
 
-    public OdoMechDistLocalizer(@NotNull SampleMecanumDrive drive, @NotNull HardwareMap hardwareMap, @NotNull TwoWheelTrackingLocalizer odoLocalizer,
+    public OdoMechDistLocalizer(@NotNull SampleMecanumDrive drive, @NotNull TwoWheelTrackingLocalizer odoLocalizer,
                                 @NotNull MecanumDrive.MecanumLocalizer wheelLocalizer,
                                 @NotNull DistanceSensorArrayLocalizer distLocalizer, @NotNull OdoRetractionController odoRetractionController) {
         this.drive = drive;
-        this.hardwareMap = hardwareMap;
         this.odoLocalizer = odoLocalizer;
         this.wheelLocalizer = wheelLocalizer;
         this.distLocalizer = distLocalizer;

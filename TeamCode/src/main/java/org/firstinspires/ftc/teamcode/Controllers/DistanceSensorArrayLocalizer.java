@@ -30,9 +30,9 @@ public class DistanceSensorArrayLocalizer implements Localizer {
     public DistanceSensorArrayLocalizer(MaxBoticsArray array) throws IllegalStateException{
         this.array = array;
 
-        if(!PoseStorage.isArrayInit) {
-            throw new IllegalStateException("You must initialize the distance sensors before you start an OpMode!!!");
-        }
+//        if(!PoseStorage.isArrayInit) {
+//            throw new IllegalStateException("You must initialize the distance sensors before you start an OpMode!!!");
+//        }
     }
 
     public enum Corner  {

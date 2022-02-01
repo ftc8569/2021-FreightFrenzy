@@ -16,11 +16,13 @@ import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
+import org.apache.commons.math3.stat.descriptive.moment.Mean;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.teamcode.Controllers.ArmController;
 import org.firstinspires.ftc.teamcode.Controllers.ArmHardware2021;
 import org.firstinspires.ftc.teamcode.Controllers.CupFinder;
+import org.firstinspires.ftc.teamcode.Controllers.DuckWheelController;
 import org.firstinspires.ftc.teamcode.Controllers.FreightSensorController;
 import org.firstinspires.ftc.teamcode.Controllers.LEDController;
 import org.firstinspires.ftc.teamcode.Controllers.RingBuffer;
@@ -31,11 +33,12 @@ import org.openftc.easyopencv.OpenCvCameraFactory;
 import org.openftc.easyopencv.OpenCvCameraRotation;
 import org.openftc.easyopencv.OpenCvWebcam;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 
 @Config
-@TeleOp(name = "TeleopV1", group = "Development")
+@TeleOp(name = "TeleOPV1", group = "Development")
 
 public class TeleOPV1 extends OpMode {
 
@@ -120,7 +123,13 @@ public class TeleOPV1 extends OpMode {
 
     FreightSensorController FreightSensor;
 
+    DuckWheelController duck;
 
+    double maxLoopTime = 0;
+
+    ElapsedTime timer = new ElapsedTime();
+    
+    Mean loopMean = new Mean();
 
     @Override
     public void init() {
@@ -152,11 +161,19 @@ public class TeleOPV1 extends OpMode {
 
         duckWheelMotor = hardwareMap.get(DcMotorEx.class, "duckWheelMotor");
         duckWheelMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        duckWheelMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         duckWheelMotor.setPower(0);
 
         duckWheelMotor2 = hardwareMap.get(DcMotorEx.class, "DuckWheelMotor2");
         duckWheelMotor2.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        duckWheelMotor2.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         duckWheelMotor2.setPower(0);
+
+        duck = new DuckWheelController(duckWheelMotor, duckWheelMotor2);
+
+        if(duckDirection == -1) {
+            duck.reverse();
+        }
 
         intakeMotor = hardwareMap.get(DcMotorEx.class, "intakeMotor");
         intakeMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
@@ -192,7 +209,15 @@ public class TeleOPV1 extends OpMode {
     public void loop() {
         if(!matchTimeStarted) {
             matchTime.reset();
+            timer.reset();
             matchTimeStarted = true;
+        } else {
+            double dt = timer.milliseconds();
+            loopMean.increment(dt);
+            if(dt > maxLoopTime) maxLoopTime = dt;
+            timer.reset();
+            telemetry.addData("avg Loop Time",loopMean.getResult());
+            telemetry.addData("max loop time", maxLoopTime);
         }
         if(PoseStorage.endPose != null) {
             drive.setPoseEstimate(PoseStorage.endPose);
@@ -202,12 +227,14 @@ public class TeleOPV1 extends OpMode {
         drive.update();
         Pose2d pose = drive.getPoseEstimate();
         long millis = System.currentTimeMillis();
-        controller.setPIDF(headingControllerCoefficients);
-        controller.setOutputFilter(outputFilter);
-        controller.setRamping(outputRamp);
+//        controller.setPIDF(headingControllerCoefficients);
+//        controller.setOutputFilter(outputFilter);
+//        controller.setRamping(outputRamp);
+//
+//        armController.setPIDF(ArmHardware2021.veloPID, DcMotor.RunMode.RUN_USING_ENCODER);
+//        armController.setPIDF(ArmHardware2021.positionPID, DcMotor.RunMode.RUN_TO_POSITION);
 
-        armController.setPIDF(ArmHardware2021.veloPID, DcMotor.RunMode.RUN_USING_ENCODER);
-        armController.setPIDF(ArmHardware2021.positionPID, DcMotor.RunMode.RUN_TO_POSITION);
+        duck.update();
 
 
         controls: {
@@ -400,16 +427,8 @@ public class TeleOPV1 extends OpMode {
 
                 duckwheels: {
                     if(gamepad2.right_bumper && millis - duckWheelStartTime > 500) {
-                        duckWheelOn = ! duckWheelOn;
+                        duck.spinDuck();
                         duckWheelStartTime = millis;
-                    }
-
-                    if(duckWheelOn) {
-                        duckWheelMotor.setPower(duckWheelSpeed * duckDirection);
-                        duckWheelMotor2.setPower(duckWheelSpeed * duckDirection);
-                    } else {
-                        duckWheelMotor.setPower(0);
-                        duckWheelMotor2.setPower(0);
                     }
                 }
             }

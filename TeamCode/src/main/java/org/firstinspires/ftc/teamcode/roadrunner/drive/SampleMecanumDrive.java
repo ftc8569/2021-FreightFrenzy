@@ -111,6 +111,7 @@ public class SampleMecanumDrive extends MecanumDrive {
     MecanumLocalizer wheelLocalizer;
     DistanceSensorArrayLocalizer distLocalizer;
     KalmanLocalizer localizer;
+//    OdoMechDistLocalizer localizer;
     OdoRetractionController retractionController;
 
     public SampleMecanumDrive(HardwareMap hardwareMap) {
