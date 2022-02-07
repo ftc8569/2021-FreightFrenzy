@@ -40,7 +40,7 @@ public class DistanceSensorArrayLocalizer implements Localizer {
             BackLeft, BackRight
     }
 
-    public static double frontOffset = 9, backOffset = 9, leftOffset = 7, rightOffset = 7;
+    public static double frontOffset = 9 - .825 - 1, backOffset = 9, leftOffset = 7 - 3, rightOffset = 7 - 3 - 1;
 
 
     @NotNull
@@ -67,9 +67,12 @@ public class DistanceSensorArrayLocalizer implements Localizer {
         if(Math.abs(bestEstimate.getX()) > 24 && Math.abs(bestEstimate.getY()) > 24 &&
                 (Math.abs(Math.toDegrees(bestEstimate.getHeading())) % 90 < 45) ?
                 Math.abs(Math.toDegrees(bestEstimate.getHeading())) % 90 < 3 :
-                90 - Math.abs(Math.toDegrees(bestEstimate.getHeading()) % 90) < 3 &&
-                Math.abs(bestEstimate.getX()) < 66 && Math.abs(bestEstimate.getY()) < 66 &&
-                Math.abs(poseVelocity.getX()) < 20 && Math.abs(poseVelocity.getY()) < 20 && Math.abs(poseVelocity.getHeading()) < 5) {
+                90 - Math.abs(Math.toDegrees(bestEstimate.getHeading()) % 90) < 3
+//                        &&
+//                Math.abs(bestEstimate.getX()) < 66 && Math.abs(bestEstimate.getY()) < 66
+//                        &&
+//                Math.abs(poseVelocity.getX()) < 20 && Math.abs(poseVelocity.getY()) < 20 && Math.abs(poseVelocity.getHeading()) < 5
+        ) {
             double val = bestEstimate.getHeading();
             double distance = Math.abs(headings[0] - val);
             int id = 0;
@@ -198,9 +201,9 @@ public class DistanceSensorArrayLocalizer implements Localizer {
 
         } else lastEstimate = new Pose2d();
 
-        if(!lastEstimate.equals(new Pose2d())) {
+        if(!lastEstimate.equals(new Pose2d()) && Math.abs(lastEstimate.getX()) < 66 && Math.abs(lastEstimate.getY()) < 66) {
             bestEstimate = lastEstimate;
-        }
+        } else lastEstimate = new Pose2d();
     }
     
     public double[] getDistances() {

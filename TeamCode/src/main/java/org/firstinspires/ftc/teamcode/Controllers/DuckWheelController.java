@@ -9,11 +9,11 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 public class DuckWheelController {
     public DcMotorEx duckwheel1, duckwheel2;
 
-    public static double accelCoeff = 3, minSpeed = 0, maxSpeed = .95, time = 1.75, exp = 1.5;
+    public static double accelCoeff = 2, minSpeed = 0, maxSpeed = .9, time = 2, exp = 1.5;
 
     public double currentPower = 0;
 
-    public ElapsedTime timer = new ElapsedTime( );
+    public ElapsedTime timer = new ElapsedTime(0);
 
     boolean reversed = false;
 
@@ -39,4 +39,6 @@ public class DuckWheelController {
         duckwheel1.setDirection(reversed ? DcMotorSimple.Direction.REVERSE : DcMotorSimple.Direction.FORWARD);
         duckwheel2.setDirection(reversed ? DcMotorSimple.Direction.REVERSE : DcMotorSimple.Direction.FORWARD);
     }
+
+
 }

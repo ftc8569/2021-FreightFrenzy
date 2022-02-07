@@ -27,6 +27,7 @@ import org.firstinspires.ftc.teamcode.Controllers.FreightSensorController;
 import org.firstinspires.ftc.teamcode.Controllers.LEDController;
 import org.firstinspires.ftc.teamcode.Controllers.RingBuffer;
 import org.firstinspires.ftc.teamcode.Controllers.TeleopHeadingDriftController;
+import org.firstinspires.ftc.teamcode.roadrunner.drive.DriveConstants;
 import org.firstinspires.ftc.teamcode.roadrunner.drive.SampleMecanumDrive;
 import org.openftc.easyopencv.OpenCvCamera;
 import org.openftc.easyopencv.OpenCvCameraFactory;
@@ -76,7 +77,7 @@ public class TeleOPV1 extends OpMode {
     public static boolean intakeReverse = false;
     private static boolean rumbled = false;
     private static boolean odoUp = false, armServoShut = true;
-    private static final boolean driftController = true;
+    private static final boolean driftController = false;
 
 
     public DcMotorEx intakeMotor, duckWheelMotor, duckWheelMotor2;
@@ -115,7 +116,7 @@ public class TeleOPV1 extends OpMode {
 
     public double drivingSpeed = fastDrivingSpeed;
 
-    Rev2mDistanceSensor frontFloor, backFloor;
+//    Rev2mDistanceSensor frontFloor, backFloor;
 
     RevColorSensorV3 freightSensor;
 
@@ -132,6 +133,8 @@ public class TeleOPV1 extends OpMode {
     ElapsedTime timer = new ElapsedTime();
     
     Mean loopMean = new Mean();
+
+    boolean pathCreated = false;
 
     @Override
     public void init() {
@@ -155,10 +158,14 @@ public class TeleOPV1 extends OpMode {
 
             case NEITHER:
                 driveOffset = 0;
-                duckDirection = 1;
+                duckDirection = -1;
                 break;
         }
 
+        DriveConstants.MAX_VEL *= fastDrivingSpeed;
+        DriveConstants.MAX_ACCEL *= fastDrivingSpeed;
+        DriveConstants.MAX_ANG_VEL *= fastDrivingSpeed;
+        DriveConstants.MAX_ANG_ACCEL *= fastDrivingSpeed;
         drive = new SampleMecanumDrive(hardwareMap);
 
         duckWheelMotor = hardwareMap.get(DcMotorEx.class, "duckWheelMotor");
@@ -191,8 +198,8 @@ public class TeleOPV1 extends OpMode {
         armController = new ArmController(ArmHardware2021.class, hardwareMap, armMode);
 
 //        metalDetector = hardwareMap.get(AnalogInput.class, "metalDetector");
-        frontFloor = hardwareMap.get(Rev2mDistanceSensor.class, "frontFloor");
-        backFloor = hardwareMap.get(Rev2mDistanceSensor.class, "backFloor");
+//        frontFloor = hardwareMap.get(Rev2mDistanceSensor.class, "frontFloor");
+//        backFloor = hardwareMap.get(Rev2mDistanceSensor.class, "backFloor");
 
         freightSensor = hardwareMap.get(RevColorSensorV3.class, "freightSensor");
         FreightSensor = new FreightSensorController(freightSensor);
@@ -428,7 +435,7 @@ public class TeleOPV1 extends OpMode {
 
 
                 duckwheels: {
-                    if(gamepad2.right_bumper && millis - duckWheelStartTime > 500) {
+                    if(gamepad2.right_bumper && millis - duckWheelStartTime > 2000) {
                         duck.spinDuck();
                         duckWheelStartTime = millis;
                     }
@@ -497,11 +504,11 @@ public class TeleOPV1 extends OpMode {
 //            telemetry.addData("ferightDists", freightDists.avg());
             telemetry.addData("freightRGBA", "%s, %s, %s, %s", FreightSensor.red, FreightSensor.green, FreightSensor.blue, FreightSensor.alpha);
             telemetry.addData("combined Freight", FreightSensor.getSum());
-            frontFloorDist = frontFloor.getDistance(DistanceUnit.INCH);
-            backFloorDist = backFloor.getDistance(DistanceUnit.INCH);
+//            frontFloorDist = frontFloor.getDistance(DistanceUnit.INCH);
+//            backFloorDist = backFloor.getDistance(DistanceUnit.INCH);
 
-            double yAngle = Math.atan2(frontFloorDist-backFloorDist, 10.25);
-            telemetry.addData("robotangle", Math.toDegrees(yAngle));
+//            double yAngle = Math.atan2(frontFloorDist-backFloorDist, 10.25);
+//            telemetry.addData("robotangle", Math.toDegrees(yAngle));
         }
 
 
@@ -510,6 +517,7 @@ public class TeleOPV1 extends OpMode {
 
         telemetry.addData("Distances FBLR", Arrays.toString(drive.getCurrentLocalizer().getDistances()));
 //        telemetry.addData("Best Localizer", drive.getCurrentLocalizer().getBestCurrentLocalizer());
+        telemetry.addData("distance Heading", Math.toDegrees(drive.getCurrentLocalizer().heading));
         telemetry.addData("Best Estimate", drive.getCurrentLocalizer().getPoseEstimate());
         telemetry.addData("Distance Sesnor Estimate", drive.getCurrentLocalizer().getDistEstimate());
         telemetry.addData("Mecanum Localizer Estimate", drive.getCurrentLocalizer().getWheelEstimate());

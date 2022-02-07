@@ -12,6 +12,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.ArrayRealVector;
+import org.apache.commons.math3.linear.NonSymmetricMatrixException;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.linear.RealVector;
 import org.firstinspires.ftc.teamcode.roadrunner.drive.SampleMecanumDrive;
@@ -46,6 +47,8 @@ public class KalmanLocalizer implements Localizer {
     double deltaTime = 0;
 
     boolean init = false;
+
+    private int errors = 0;
 
     RealMatrix stateTransition = new Array2DRowRealMatrix(new double[][] {
             {1, deltaTime, 0.5*Math.pow(deltaTime,2), 0, 0, 0, 0, 0, 0},
@@ -232,7 +235,12 @@ public class KalmanLocalizer implements Localizer {
 
         updateVectors();
 
-        filter.correct(wheelMeasureVector);
+        try{
+            filter.correct(wheelMeasureVector);
+        } catch (NonSymmetricMatrixException e) {
+            errors++;
+            e.printStackTrace();
+        }
 
         odoEstimate = odoRetractionController.isUp() ? new Pose2d() : odoLocalizer.getPoseEstimate();
 
@@ -241,7 +249,12 @@ public class KalmanLocalizer implements Localizer {
             filter.predict();
             updateVectors();
             timer.reset();
+            try {
             filter.correct(odoMeasureVector);
+            } catch (NonSymmetricMatrixException e) {
+                errors++;
+                e.printStackTrace();
+            }
         }
 
         distLocalizer.setPoseEstimate(bestEstimate);
@@ -249,12 +262,17 @@ public class KalmanLocalizer implements Localizer {
         distLocalizer.update();
         distEstimate = distLocalizer.getPoseEstimate();
 
-//        if(!distEstimate.equals(new Pose2d())) {
-//            deltaTime = timer.seconds();
-//            filter.predict();
-//            updateVectors();
-//            filter.correct(distMeasureVector);
-//        }
+        if(!distEstimate.equals(new Pose2d())) {
+            deltaTime = timer.seconds();
+            filter.predict();
+            updateVectors();
+            try {
+            filter.correct(distMeasureVector);
+            } catch (NonSymmetricMatrixException e) {
+                errors++;
+                e.printStackTrace();
+            }
+        }
 
         measurementUncertainty = measUncTheta;
 
@@ -263,7 +281,12 @@ public class KalmanLocalizer implements Localizer {
         deltaTime = timer.seconds();
         filter.predict();
         updateVectors();
+        try {
         filter.correct(headingMeasureVector);
+        } catch (NonSymmetricMatrixException e) {
+            errors++;
+            e.printStackTrace();
+        }
 
         HashMap<String, Object> map = new HashMap<>();
         map.put("Heading Estimate", String.valueOf(headingMeasureVector.getEntry(5)));
@@ -347,5 +370,9 @@ public class KalmanLocalizer implements Localizer {
 
     public Pose2d getWheelEstimate() {
         return wheelEstimate;
+    }
+
+    public int getErrors() {
+        return errors;
     }
 }

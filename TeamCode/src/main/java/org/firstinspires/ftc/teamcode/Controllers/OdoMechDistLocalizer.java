@@ -95,14 +95,14 @@ public class OdoMechDistLocalizer implements Localizer {
             poseVelocity = wheelLocalizer.getPoseVelocity();
         }
         distLocalizer.setPoseVelocity(poseVelocity);
-        distLocalizer.setPoseEstimate(new Pose2d(bestPoseEstimate.getX(), bestPoseEstimate.getY(), heading));
+        distLocalizer.setPoseEstimate(new Pose2d(bestPoseEstimate.getX(), bestPoseEstimate.getY(), Angle.normDelta(heading)));
         distLocalizer.update();
         distEstimate = distLocalizer.getPoseEstimate();
 
         if(!odoRetractionController.isUp()) {
-//            if(!distEstimate.equals(new Pose2d())) {
-//                bestCurrentLocalizer = distLocalizer;
-//            } else
+            if(!distEstimate.equals(new Pose2d())) {
+                bestCurrentLocalizer = distLocalizer;
+            } else
             bestCurrentLocalizer = odoLocalizer;
         } else bestCurrentLocalizer = wheelLocalizer;
 

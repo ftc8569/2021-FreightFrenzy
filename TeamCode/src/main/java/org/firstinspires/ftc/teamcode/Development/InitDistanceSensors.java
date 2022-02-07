@@ -6,8 +6,11 @@ import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.DigitalChannelImpl;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.teamcode.Controllers.MaxBoticsArray;
 import org.firstinspires.ftc.teamcode.Controllers.MaxBoticsMB1040;
+
+import java.util.Arrays;
 
 @Autonomous
 public class InitDistanceSensors extends LinearOpMode {
@@ -29,6 +32,14 @@ public class InitDistanceSensors extends LinearOpMode {
 
 
         waitForStart();
+        int pin = 0;
+        while(opModeIsActive() && !isStopRequested()) {
+            telemetry.addData("distances fblr", Arrays.toString(array.getDistances(DistanceUnit.INCH)));
+            if(array.getStartPin().getState()) pin++;
+            telemetry.addData("startpin?", array.getStartPin().getState());
+            telemetry.addData("startpin pulses", pin);
+            telemetry.update();
+        }
         requestOpModeStop();
     }
 }

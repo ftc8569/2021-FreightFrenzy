@@ -50,14 +50,17 @@ public class MainAutoV1 extends TeleOPV1 {
 
     @Override
     public void init() {
-        super.init();
-
         PoseStorage.armPos = 0;
 
-        this.armStartPos = TeleOPV1.armStartPos;
-        this.armTopPos = TeleOPV1.armTopPos;
-        this.armMiddlePos = TeleOPV1.armMiddlePos;
-        this.armBottomPos = TeleOPV1.armBottomPos;
+        super.init();
+
+        armStartPos = TeleOPV1.armStartPos;
+        armTopPos = TeleOPV1.armTopPos;
+        armMiddlePos = TeleOPV1.armMiddlePos;
+        armBottomPos = TeleOPV1.armBottomPos;
+
+        intakeOn = false;
+        intakeReverse = false;
 
         webcam:
         {
@@ -234,9 +237,12 @@ public class MainAutoV1 extends TeleOPV1 {
                                         break;
                                 }
 
-                                if(!drive.isBusy()) {
+                                if(!drive.isBusy()
+//                                        || hasFreight
+                                ) {
                                     drive.cancel();
                                     redWarehousePaths.setPath(RedWarehousePaths.Paths.toHub2);
+//                                    redWarehousePaths.generateToHub2();
                                     drive.followTrajectorySequenceAsync(redWarehousePaths.toHub2);
                                 }
                                 break;
@@ -274,9 +280,12 @@ public class MainAutoV1 extends TeleOPV1 {
                                         break;
                                 }
 
-                                if(!drive.isBusy()) {
+                                if(!drive.isBusy()
+//                                        || hasFreight
+                                ) {
                                     drive.cancel();
                                     redWarehousePaths.setPath(RedWarehousePaths.Paths.toHub3);
+//                                    redWarehousePaths.generateToHub3();
                                     drive.followTrajectorySequenceAsync(redWarehousePaths.toHub3);
                                 }
                                 break;

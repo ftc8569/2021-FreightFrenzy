@@ -243,7 +243,7 @@ public class AdjustableKalmanFilter {
         // xHat(k)- = A * xHat(k-1) + B * u(k-1)
         stateEstimation = transitionMatrix.operate(stateEstimation);
 
-        stateEstimation.setEntry(5, Angle.normDelta(stateEstimation.getEntry(5)));
+        stateEstimation.setEntry(6, Angle.normDelta(stateEstimation.getEntry(6)));
 
         // add control input if it is available
         if (u != null) {
@@ -289,7 +289,7 @@ public class AdjustableKalmanFilter {
     public void correct(final RealVector z)
             throws NullArgumentException, DimensionMismatchException, SingularMatrixException {
 
-        z.setEntry(5, Angle.normDelta(z.getEntry(5)));
+        z.setEntry(4, Angle.normDelta(z.getEntry(4)));
         // sanity checks
         MathUtils.checkNotNull(z);
         if (z.getDimension() != measurementMatrix.getRowDimension()) {
@@ -305,10 +305,10 @@ public class AdjustableKalmanFilter {
         // Inn = z(k) - H * xHat(k)-
         RealVector innovation = z.subtract(measurementMatrix.operate(stateEstimation));
 
-        double current = z.getEntry(5), last = stateEstimation.getEntry(5);
+        double current = z.getEntry(4), last = stateEstimation.getEntry(6);
 
         double error = Math.toDegrees(Math.atan2(Math.sin(current - last), Math.cos(current - last)));
-        innovation.setEntry(5, Angle.normDelta(error));
+        innovation.setEntry(4, error);
 
 
 
@@ -328,7 +328,7 @@ public class AdjustableKalmanFilter {
         // update estimate with measurement z(k)
         // xHat(k) = xHat(k)- + K * Inn
         stateEstimation = stateEstimation.add(kalmanGain.operate(innovation));
-        stateEstimation.setEntry(5, Angle.normDelta(stateEstimation.getEntry(5)));
+        stateEstimation.setEntry(6, Angle.normDelta(stateEstimation.getEntry(6)));
 
         // update covariance of prediction error
         // P(k) = (I - K * H) * P(k)-
