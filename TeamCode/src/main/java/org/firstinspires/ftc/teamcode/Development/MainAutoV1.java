@@ -59,6 +59,9 @@ public class MainAutoV1 extends TeleOPV1 {
             armMiddlePos,
             armBottomPos;
 
+    double[] distances;
+    double frontDist, backDist, leftDist, rightDist;
+
 
     @Override
     public void init() {
@@ -127,35 +130,27 @@ public class MainAutoV1 extends TeleOPV1 {
     @Override
     public void init_loop() {
         drive.update();
-        double[] distances = drive.getDistLocalizer().getDistances();
-        double frontDist = distances[0], backDist = distances[1], leftDist = distances[2], rightDist = distances[3];
-
-
-        if (leftDist > 50) {
-            PoseStorage.startingPosition = PoseStorage.StartingPosition.WAREHOUSE;
-            PoseStorage.alliance = BLUE;
-            led.setPattern(RevBlinkinLedDriver.BlinkinPattern.BLUE_GREEN);
-        } else if (rightDist > 50) {
-            PoseStorage.startingPosition = PoseStorage.StartingPosition.WAREHOUSE;
-            PoseStorage.alliance = PoseStorage.Alliance.RED;
-            led.setPattern(RevBlinkinLedDriver.BlinkinPattern.RED_ORANGE);
-        } else if (leftDist > rightDist) {
-            PoseStorage.startingPosition = PoseStorage.StartingPosition.DUCK;
-            PoseStorage.alliance = BLUE;
-            led.setPattern(RevBlinkinLedDriver.BlinkinPattern.BLUE);
-        } else {
-            PoseStorage.startingPosition = PoseStorage.StartingPosition.DUCK;
-            PoseStorage.alliance = PoseStorage.Alliance.RED;
-            led.setPattern(RevBlinkinLedDriver.BlinkinPattern.RED);
-        }
+        Position pos = findPosition();
+        PoseStorage.alliance = pos.getAlliance();
+        PoseStorage.startingPosition = pos.getPosition();
 
         switch (PoseStorage.alliance) {
             case RED:
                 duckDirection = -1;
+                if(PoseStorage.startingPosition == PoseStorage.StartingPosition.WAREHOUSE) {
+                    led.setPattern(RevBlinkinLedDriver.BlinkinPattern.RED_ORANGE);
+                } else {
+                    led.setPattern(RevBlinkinLedDriver.BlinkinPattern.RED);
+                }
                 break;
 
             case BLUE:
                 duckDirection = 1;
+                if(PoseStorage.startingPosition == PoseStorage.StartingPosition.WAREHOUSE) {
+                    led.setPattern(RevBlinkinLedDriver.BlinkinPattern.BLUE_GREEN);
+                } else {
+                    led.setPattern(RevBlinkinLedDriver.BlinkinPattern.BLUE);
+                }
                 break;
 
             case NEITHER:
@@ -649,5 +644,50 @@ public class MainAutoV1 extends TeleOPV1 {
                 }
             }
         }
+    }
+
+    Position findPosition() {
+        distances = drive.getDistLocalizer().getDistances();
+        frontDist = distances[0];
+        backDist = distances[1];
+        leftDist = distances[2];
+        rightDist = distances[3];
+
+        PoseStorage.Alliance alliance;
+        PoseStorage.StartingPosition startingPosition;
+
+        if (leftDist > 50) {
+            startingPosition = PoseStorage.StartingPosition.WAREHOUSE;
+            alliance = BLUE;
+        } else if (rightDist > 50) {
+            startingPosition = PoseStorage.StartingPosition.WAREHOUSE;
+            alliance = PoseStorage.Alliance.RED;
+        } else if (leftDist > rightDist) {
+            startingPosition = PoseStorage.StartingPosition.DUCK;
+            alliance = BLUE;
+        } else {
+            startingPosition = PoseStorage.StartingPosition.DUCK;
+            alliance = PoseStorage.Alliance.RED;
+        }
+        return new Position(alliance, startingPosition);
+    }
+}
+
+class Position {
+
+    PoseStorage.Alliance alliance;
+    PoseStorage.StartingPosition position;
+
+    Position(PoseStorage.Alliance alliance, PoseStorage.StartingPosition position) {
+        this.alliance = alliance;
+        this.position = position;
+    }
+
+    PoseStorage.StartingPosition getPosition() {
+        return position;
+    }
+
+    PoseStorage.Alliance getAlliance() {
+        return alliance;
     }
 }

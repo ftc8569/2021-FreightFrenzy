@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode.Development;
 
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.DigitalChannelImpl;
@@ -12,6 +13,7 @@ import org.firstinspires.ftc.teamcode.Controllers.MaxBoticsMB1040;
 
 import java.util.Arrays;
 
+@Disabled
 @Autonomous
 public class InitDistanceSensors extends LinearOpMode {
     @Override
