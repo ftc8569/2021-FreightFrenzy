@@ -100,9 +100,9 @@ public class OdoMechDistLocalizer implements Localizer {
         distEstimate = distLocalizer.getPoseEstimate();
 
         if(!odoRetractionController.isUp()) {
-            if(!distEstimate.equals(new Pose2d())) {
-                bestCurrentLocalizer = distLocalizer;
-            } else
+//            if(!distEstimate.equals(new Pose2d())) {
+//                bestCurrentLocalizer = distLocalizer;
+//            } else
             bestCurrentLocalizer = odoLocalizer;
         } else bestCurrentLocalizer = wheelLocalizer;
 
