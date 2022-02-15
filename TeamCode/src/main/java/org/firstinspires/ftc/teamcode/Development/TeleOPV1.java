@@ -7,10 +7,15 @@ import com.qualcomm.hardware.rev.RevBlinkinLedDriver;
 import com.qualcomm.hardware.rev.RevColorSensorV3;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.CRServo;
+import com.qualcomm.robotcore.hardware.CRServoImpl;
+import com.qualcomm.robotcore.hardware.CRServoImplEx;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
+import com.qualcomm.robotcore.hardware.PwmControl;
 import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.hardware.ServoImplEx;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.apache.commons.math3.stat.descriptive.moment.Mean;
@@ -52,7 +57,13 @@ public class TeleOPV1 extends OpMode {
                          capDownDownPos = 0.165,
                          capNormalPos = 0.675,
                          fastDrivingSpeed = .9,
-                         slowedDrivingSpeed = .5;
+                         slowedDrivingSpeed = .5,
+                         tiltpanMaxRange = 101,
+                         tapePanVisionPos = .855,
+                         tapeTiltMin = .3,
+                         tapeTiltMax = .5+ 35/tiltpanMaxRange,
+                         tapeTiltVisionPos = 0,
+                         tapeExtendNeutralPower = .55;
 
     public final PIDFCoefficients headingControllerCoefficients = new PIDFCoefficients(.012, 0.005, 0.001, 0);
 
@@ -130,6 +141,12 @@ public class TeleOPV1 extends OpMode {
 
     boolean pathCreated = false;
 
+    ServoImplEx tapePanServo, tapeTiltServo;
+
+    CRServoImplEx tapeExtendServo;
+
+    double tapeTilt = tapeTiltVisionPos, tapePan = tapePanVisionPos;
+
     @Override
     public void init() {
         telemetry.addData(">", "Initializing...");
@@ -206,6 +223,20 @@ public class TeleOPV1 extends OpMode {
         capServo.setDirection(Servo.Direction.REVERSE);
         capServo.setPosition(capNormalPos);
 
+        tapePanServo = hardwareMap.get(ServoImplEx.class, "tapePanServo");
+        tapePanServo.setPwmRange(new PwmControl.PwmRange(500, 2500));
+        tapePanServo.setDirection(Servo.Direction.REVERSE);
+        tapePanServo.setPosition(tapePanVisionPos);
+
+        tapeTiltServo = hardwareMap.get(ServoImplEx.class, "tapeTiltServo");
+        tapeTiltServo.setPwmRange(new PwmControl.PwmRange(500, 2500));
+        tapeTiltServo.scaleRange(tapeTiltMin, tapeTiltMax);
+        tapeTiltServo.setPosition(tapeTiltVisionPos);
+
+        tapeExtendServo = hardwareMap.get(CRServoImplEx.class, "tapeExtendServo");
+        tapeExtendServo.setPwmRange(new PwmControl.PwmRange(500, 2500));
+        tapeExtendServo.setPower(0);
+
         telemetry.addData(">", "Initialized!!!");
         telemetry.update();
         while(led.getSeconds() < 1) {}
@@ -230,10 +261,10 @@ public class TeleOPV1 extends OpMode {
             drive.setPoseEstimate(PoseStorage.endPose);
             PoseStorage.endPose = null;
         }
+
         Pose2d power = new Pose2d(0, 0, 0);
         drive.update();
         Pose2d pose = drive.getPoseEstimate();
-        long millis = System.currentTimeMillis();
 //        controller.setPIDF(headingControllerCoefficients);
 //        controller.setOutputFilter(outputFilter);
 //        controller.setRamping(outputRamp);
@@ -328,6 +359,9 @@ public class TeleOPV1 extends OpMode {
                             drivingMode = DrivingMode.MANUAL;
                             drive.cancel();
                             drive.setWeightedDrivePower(new Pose2d(0, 0, 0));
+                        }
+                        if(!drive.isBusy()) {
+                            drivingMode = DrivingMode.MANUAL;
                         }
                     }
 
@@ -430,7 +464,8 @@ public class TeleOPV1 extends OpMode {
                         capServo.setPosition(capNormalPos);
                     }
                 }
-            } else {
+            } else
+                {
                 arm: {
 
                 if(!armServoShut) {
@@ -499,13 +534,40 @@ public class TeleOPV1 extends OpMode {
             telemetry.addData("CapPosition", capServo.getPosition());
             telemetry.addData("ArmPosition", armController.getPosition());
 
+            tape: {
+                if(gamepad2.left_trigger > .05 || gamepad2.right_trigger > .05) {
+                    tapeExtendServo.setPower(gamepad2.right_trigger - gamepad2.left_trigger);
+                } else tapeExtendServo.setPower(0);
+
+                if(Math.abs(gamepad2.left_stick_y) > .05) {
+                    if(Math.abs(tapeTilt - gamepad2.left_stick_y/20) < 1)
+                    {
+                        tapeTilt -= gamepad2.left_stick_y/20;
+                        tapeTiltServo.setPosition(tapeTilt);
+                    }
+                }
+                if(Math.abs(gamepad2.left_stick_x) > .05) {
+                   if(Math.abs(tapePan + gamepad2.left_stick_x/20) < 1){
+                       tapePan += gamepad2.left_stick_x/20;
+                       tapePanServo.setPosition(tapePan);
+                   }
+                }
+
+
+                telemetry.addData("tiltPos", tapeTilt);
+                telemetry.addData("panPos", tapePan);
+
+
+            }
 
 
                 duckwheels: {
-                    if(gamepad2.right_bumper && duckWheelTimer.seconds() > 2) {
+                    if(gamepad1.left_bumper && gamepad1.right_bumper) {
+                        duck.slingDuck();
+                    } else if(gamepad1.right_bumper && duckWheelTimer.seconds() > 2) {
                         duck.spinDuck();
                         duckWheelTimer.reset();
-                    } else if (gamepad2.left_bumper && duckWheelTimer.seconds() > 2) {
+                    } else if (gamepad1.left_bumper && duckWheelTimer.seconds() > 2) {
                         duck.spinDuckSlow();
                         duckWheelTimer.reset();
                     }
@@ -594,6 +656,11 @@ public class TeleOPV1 extends OpMode {
         telemetry.addData("Odometry Localizer Estimate", drive.getCurrentLocalizer().getOdoEstimate());
 
 
+    }
+
+    //some simple stackoverflow code useful for stuff with our scaled (tilt) servo on the tape.
+    public static double scale(final double valueIn, final double baseMin, final double baseMax, final double limitMin, final double limitMax) {
+        return ((limitMax - limitMin) * (valueIn - baseMin) / (baseMax - baseMin)) + limitMin;
     }
 }
 

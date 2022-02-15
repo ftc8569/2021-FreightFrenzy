@@ -9,7 +9,8 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 public class DuckWheelController {
     public DcMotorEx duckwheel1, duckwheel2;
 
-    public static double accelCoeff = 2, minSpeed = 0, maxSpeedFast = .95, maxSpeedSlow = .8, time = 2, exp = 1.5;
+    public static double defaultAccelCoeff = 2, defaultMinSpeed = 0, defaultMaxSpeed = .95, defaultTime = 2, defaultExp = 1.5;
+    public double accelCoeff = 2, minSpeed = 0, maxSpeedFast = .95, maxSpeedSlow = .8, time = 2, exp = 1.5;
 
     public double currentPower = 0;
 
@@ -33,23 +34,28 @@ public class DuckWheelController {
     }
 
     public void spinDuck() {
-        time = 1.75;
-        accelCoeff = 2.25;
-        maxSpeed = maxSpeedFast;
-        timer.reset();
+        spin(0, .95, 1.75, 2.25, 1.5);
+
     }
 
     public void spinDuckSlow() {
-        time = 2;
-        accelCoeff = 2;
-        maxSpeed = maxSpeedSlow;
-        timer.reset();
+        spin(0, .8, 2, 2, 1.5);
     }
 
     public void spinDuckAuto() {
-        time = 2.5;
-        accelCoeff = 2;
-        maxSpeed = maxSpeedSlow;
+        spin(0, .8, 2, 2, 1.5);
+    }
+
+    public void slingDuck() {
+        spin(0, 1, 2, 5, 4);
+    }
+
+    protected void spin(double minSpeed, double maxSpeed, double time, double accelCoeff, double exp) {
+        this.minSpeed = minSpeed;
+        this.maxSpeed = maxSpeed;
+        this.time = time;
+        this.accelCoeff = accelCoeff;
+        this.exp = exp;
         timer.reset();
     }
 
