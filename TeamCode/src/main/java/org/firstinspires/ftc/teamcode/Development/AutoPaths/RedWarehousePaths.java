@@ -116,7 +116,10 @@ public class RedWarehousePaths {
                     MainAutoV1.intakeOn = true;
                     MainAutoV1.intakeReverse = true;
                 })
-                .addDisplacementMarker(() -> TeleOPV1.armController.setPosition((int) MainAutoV1.armTopPos))
+                .addDisplacementMarker(() -> {
+                    TeleOPV1.armController.setPosition((int) MainAutoV1.armTopPos);
+                    TeleOPV1.depositController.hold();
+                })
                 .lineToLinearHeading(new Pose2d(-1, -41, Math.toRadians(-45)),
                         SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL * .75,
                                 DriveConstants.MAX_ANG_VEL * .75, DriveConstants.TRACK_WIDTH),
@@ -149,7 +152,10 @@ public class RedWarehousePaths {
                     MainAutoV1.intakeOn = true;
                     MainAutoV1.intakeReverse = true;
                 })
-                .addDisplacementMarker(() -> TeleOPV1.armController.setPosition((int) MainAutoV1.armTopPos))
+                .addDisplacementMarker(() -> {
+                    TeleOPV1.armController.setPosition((int) MainAutoV1.armTopPos);
+                    TeleOPV1.depositController.hold();
+                })
                 .lineToLinearHeading(new Pose2d(.5, -42, Math.toRadians(-45)),
                 SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL * .75,
                         DriveConstants.MAX_ANG_VEL * .75, DriveConstants.TRACK_WIDTH),

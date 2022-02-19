@@ -5,7 +5,6 @@ import android.annotation.SuppressLint;
 import androidx.annotation.NonNull;
 
 import com.acmerobotics.dashboard.FtcDashboard;
-import com.acmerobotics.dashboard.canvas.Canvas;
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.acmerobotics.roadrunner.control.PIDCoefficients;
@@ -37,7 +36,7 @@ import com.qualcomm.robotcore.hardware.configuration.typecontainers.MotorConfigu
 
 import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
 import org.firstinspires.ftc.teamcode.Controllers.DistanceSensorArrayLocalizer;
-import org.firstinspires.ftc.teamcode.Controllers.KalmanLocalizer;
+import org.firstinspires.ftc.teamcode.Controllers.ConstantAccelerationKalmanLocalizer;
 import org.firstinspires.ftc.teamcode.Controllers.MaxBoticsArray;
 import org.firstinspires.ftc.teamcode.Controllers.MaxBoticsMB1040;
 import org.firstinspires.ftc.teamcode.Controllers.OdoMechDistLocalizer;
@@ -45,7 +44,6 @@ import org.firstinspires.ftc.teamcode.Controllers.OdoRetractionController;
 import org.firstinspires.ftc.teamcode.roadrunner.trajectorysequence.TrajectorySequence;
 import org.firstinspires.ftc.teamcode.roadrunner.trajectorysequence.TrajectorySequenceBuilder;
 import org.firstinspires.ftc.teamcode.roadrunner.trajectorysequence.TrajectorySequenceRunner;
-import org.firstinspires.ftc.teamcode.roadrunner.util.DashboardUtil;
 import org.firstinspires.ftc.teamcode.roadrunner.util.LynxModuleUtil;
 import org.jetbrains.annotations.NotNull;
 
@@ -82,8 +80,10 @@ public class SampleMecanumDrive extends MecanumDrive {
     public static double OMEGA_WEIGHT = 1;
 
     public static double FOLLOWER_TIMEOUT = .25;
-    public static double FOLLOWER_HEADING_TOLERANCE = Math.toRadians(.5);
-    public static double FOLLOWER_POSITION_TOLERANCE = 0.25;
+    public static double FOLLOWER_HEADING_TOLERANCE = Math.toRadians(2);
+//            Math.toRadians(.5);
+    public static double FOLLOWER_POSITION_TOLERANCE = .75;
+//        0.25;
 
     public static double HEADING_LOW_PASS_CONSTANT = .75; //1 means fully the current value, 0 means fully the previous value
 
@@ -111,7 +111,7 @@ public class SampleMecanumDrive extends MecanumDrive {
     TwoWheelTrackingLocalizer odolocalizer;
     MecanumLocalizer wheelLocalizer;
     DistanceSensorArrayLocalizer distLocalizer;
-//    KalmanLocalizer localizer;
+//    ConstantAccelerationKalmanLocalizer localizer;
     OdoMechDistLocalizer localizer;
     OdoRetractionController retractionController;
 

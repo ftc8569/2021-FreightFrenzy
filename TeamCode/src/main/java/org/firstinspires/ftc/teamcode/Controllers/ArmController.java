@@ -10,7 +10,7 @@ public class ArmController {
     private HardwareMap hardwareMap;
     private ArmHardware hardware;
 
-    public static double armSetPosPower = 1; //tuen this down if too fast when going to positions
+    public static double armSetPosPower = .9; //tuen this down if too fast when going to positions
 
     protected double setPos = 0;
 

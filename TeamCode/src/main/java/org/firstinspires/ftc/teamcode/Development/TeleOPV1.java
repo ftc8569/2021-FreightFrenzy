@@ -3,12 +3,12 @@ package org.firstinspires.ftc.teamcode.Development;
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.roadrunner.geometry.Pose2d;
 import com.acmerobotics.roadrunner.geometry.Vector2d;
+import com.qualcomm.hardware.rev.Rev2mDistanceSensor;
 import com.qualcomm.hardware.rev.RevBlinkinLedDriver;
 import com.qualcomm.hardware.rev.RevColorSensorV3;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.hardware.CRServo;
-import com.qualcomm.robotcore.hardware.CRServoImpl;
+import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.CRServoImplEx;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
@@ -19,8 +19,11 @@ import com.qualcomm.robotcore.hardware.ServoImplEx;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.apache.commons.math3.stat.descriptive.moment.Mean;
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.teamcode.Controllers.ArmController;
 import org.firstinspires.ftc.teamcode.Controllers.ArmHardware2021;
+import org.firstinspires.ftc.teamcode.Controllers.ConveyorController;
+import org.firstinspires.ftc.teamcode.Controllers.DepositController;
 import org.firstinspires.ftc.teamcode.Controllers.DuckWheelController;
 import org.firstinspires.ftc.teamcode.Controllers.FreightSensorController;
 import org.firstinspires.ftc.teamcode.Controllers.LEDController;
@@ -45,10 +48,11 @@ public class TeleOPV1 extends OpMode {
                          duckWheelSpeed = .6,
                          armStartPos = 0 - PoseStorage.armPos,
                          armTopPos = 1070 - PoseStorage.armPos,
-                         armMiddlePos = 1466 - PoseStorage.armPos,
+                         armMiddlePos = 1386 - PoseStorage.armPos,
                          armBottomPos = 1600 - PoseStorage.armPos,
-                         armServoShutPos = 0,
-                         armServoOpenPos = .1,
+                         armConveyorPos =
+//                                 403 - PoseStorage.armPos, // temporary
+                                 410 - PoseStorage.armPos, // with new bucket
                          armCapUpPos = 1070 - PoseStorage.armPos,
                          armCapDownPos = 1816 - PoseStorage.armPos,
                          capUpPos = .601,
@@ -59,11 +63,12 @@ public class TeleOPV1 extends OpMode {
                          fastDrivingSpeed = .9,
                          slowedDrivingSpeed = .5,
                          tiltpanMaxRange = 101,
-                         tapePanVisionPos = .855,
+                         tapePanVisionPos = .97,
                          tapeTiltMin = .3,
                          tapeTiltMax = .5+ 35/tiltpanMaxRange,
                          tapeTiltVisionPos = 0,
-                         tapeExtendNeutralPower = .55;
+                         tapeTiltNormalPos = .4,
+                         tapePanNormalPos = tapePanVisionPos;
 
     public final PIDFCoefficients headingControllerCoefficients = new PIDFCoefficients(.012, 0.005, 0.001, 0);
 
@@ -75,11 +80,11 @@ public class TeleOPV1 extends OpMode {
     public static boolean intakeOn = false;
     public static boolean intakeReverse = false;
     private static boolean firstRumble = false, secondRumble = false;
-    private static boolean odoUp = false, armServoShut = true;
-    private static final boolean driftController = false;
+    private static boolean odoUp = false;
+    private static boolean driftController = false;
 
 
-    public DcMotorEx intakeMotor, duckWheelMotor, duckWheelMotor2;
+    public DcMotorEx intakeMotor, duckWheelMotor, conveyorMotor;
     //duckWheel port 0 expansion hub
     //intake port 1 on expansion hub
 
@@ -90,17 +95,15 @@ public class TeleOPV1 extends OpMode {
 
     public static ArmController armController;
 
-    Servo armServo, capServo;
-
     ElapsedTime odoTimer = new ElapsedTime(), armServoTimer = new ElapsedTime(),
             capTimer = new ElapsedTime(), matchTime = new ElapsedTime(), modeSwap = new ElapsedTime(),
             speedSwap = new ElapsedTime(), autoFreightTimer = new ElapsedTime(),
-            intakeTimer = new ElapsedTime(), duckWheelTimer = new ElapsedTime();
+            intakeTimer = new ElapsedTime(), duckWheelTimer = new ElapsedTime(), armTimer = new ElapsedTime();
 
     double driveOffset = 0, duckDirection = 1, capPos = 0;
 
-//    AnalogInput metalDetector;
-    public static boolean rumbling = false, matchTimeStarted = false, hasmetal = false, lastHadMetal = false, capDown = false, hasFreight = false;
+    AnalogInput metalDetector;
+    public boolean rumbling = false, matchTimeStarted = false, capDown = false, hasFreight = false, lastHadFreight = false;
 
 
     public enum GunningMode {
@@ -117,15 +120,17 @@ public class TeleOPV1 extends OpMode {
 
     public DrivingMode drivingMode = DrivingMode.MANUAL;
 
-    public FreightSensorController.Freight freight = FreightSensorController.Freight.NONE;
+    public FreightSensorController.Freight freight = FreightSensorController.Freight.NONE, lastFreight = FreightSensorController.Freight.NONE;
 
     public double drivingSpeed = fastDrivingSpeed;
 
-//    Rev2mDistanceSensor frontFloor, backFloor;
+    Rev2mDistanceSensor frontFloor, backFloor;
 
     RevColorSensorV3 freightSensor;
 
     LEDController led;
+
+    public static RevBlinkinLedDriver.BlinkinPattern pattern = RevBlinkinLedDriver.BlinkinPattern.LARSON_SCANNER_RED;
 
     double frontFloorDist = 0, backFloorDist = 0;
 
@@ -136,6 +141,10 @@ public class TeleOPV1 extends OpMode {
     double maxLoopTime = 0;
 
     ElapsedTime timer = new ElapsedTime();
+
+    ElapsedTime doorTimer = new ElapsedTime();
+
+    boolean doorShutted = true;
     
     Mean loopMean = new Mean();
 
@@ -146,6 +155,10 @@ public class TeleOPV1 extends OpMode {
     CRServoImplEx tapeExtendServo;
 
     double tapeTilt = tapeTiltVisionPos, tapePan = tapePanVisionPos;
+
+    ConveyorController conveyorController;
+
+    public static DepositController depositController;
 
     @Override
     public void init() {
@@ -161,12 +174,12 @@ public class TeleOPV1 extends OpMode {
 
         switch (PoseStorage.alliance) {
             case RED:
-                driveOffset = -90;
+                driveOffset = 90;
                 duckDirection = -1;
                 break;
 
             case BLUE:
-                driveOffset = 90;
+                driveOffset = -90;
                 duckDirection = 1;
                 break;
 
@@ -187,12 +200,14 @@ public class TeleOPV1 extends OpMode {
         duckWheelMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         duckWheelMotor.setPower(0);
 
-        duckWheelMotor2 = hardwareMap.get(DcMotorEx.class, "DuckWheelMotor2");
-        duckWheelMotor2.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        duckWheelMotor2.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        duckWheelMotor2.setPower(0);
+        conveyorMotor = hardwareMap.get(DcMotorEx.class, "DuckWheelMotor2");
+        conveyorMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        conveyorMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        conveyorMotor.setPower(0);
 
-        duck = new DuckWheelController(duckWheelMotor, duckWheelMotor2);
+        conveyorController = new ConveyorController(conveyorMotor);
+
+        duck = new DuckWheelController(duckWheelMotor);
 
         if(duckDirection == -1) {
             duck.reverse();
@@ -206,22 +221,29 @@ public class TeleOPV1 extends OpMode {
         controller.setOutputScale(.3);
 
 
-        armServo = hardwareMap.get(Servo.class, "armServo");
-        armServo.setPosition(armServoShutPos);
+        Servo armServo = hardwareMap.get(Servo.class, "armServo");
+        armServo.setDirection(Servo.Direction.REVERSE);
+
+        Servo kickerServo = hardwareMap.get(Servo.class, "kickerServo");
+
+        depositController = new DepositController(armServo, kickerServo);
+
+        depositController.set(false);
 
         armController = new ArmController(ArmHardware2021.class, hardwareMap, armMode);
 
         ArmController.armSetPosPower = 1;
-//        metalDetector = hardwareMap.get(AnalogInput.class, "metalDetector");
-//        frontFloor = hardwareMap.get(Rev2mDistanceSensor.class, "frontFloor");
-//        backFloor = hardwareMap.get(Rev2mDistanceSensor.class, "backFloor");
+        metalDetector = hardwareMap.get(AnalogInput.class, "metalDetector");
+        frontFloor = hardwareMap.get(Rev2mDistanceSensor.class, "frontFloor");
+        backFloor = hardwareMap.get(Rev2mDistanceSensor.class, "backFloor");
 
         freightSensor = hardwareMap.get(RevColorSensorV3.class, "freightSensor");
-        FreightSensor = new FreightSensorController(freightSensor);
+        FreightSensor = new FreightSensorController(freightSensor, metalDetector);
 
-        capServo = hardwareMap.get(Servo.class, "capServo");
-        capServo.setDirection(Servo.Direction.REVERSE);
-        capServo.setPosition(capNormalPos);
+//        kickerServo.setDirection(Servo.Direction.REVERSE);
+//        capServo = hardwareMap.get(Servo.class, "capServo");
+//        capServo.setDirection(Servo.Direction.REVERSE);
+//        capServo.setPosition(capNormalPos);
 
         tapePanServo = hardwareMap.get(ServoImplEx.class, "tapePanServo");
         tapePanServo.setPwmRange(new PwmControl.PwmRange(500, 2500));
@@ -248,6 +270,8 @@ public class TeleOPV1 extends OpMode {
         if(!matchTimeStarted) {
             matchTime.reset();
             timer.reset();
+            tapeTiltServo.setPosition(tapeTiltNormalPos);
+            tapePanServo.setPosition(tapePanNormalPos);
             matchTimeStarted = true;
         } else {
             double dt = timer.milliseconds();
@@ -274,16 +298,18 @@ public class TeleOPV1 extends OpMode {
 
         duck.update();
 
+        conveyorController.update();
+
         if(!firstRumble) {
-            if(matchTime.seconds() > 120 - 35) {
+            if(matchTime.seconds() > 120 - 45) {
                 gamepad1.rumble(1, 1, 750);
                 gamepad2.rumble(1, 1, 750);
                 firstRumble = true;
             }
         } else if (!secondRumble) {
             if (matchTime.seconds() > 120 - 30) {
-                gamepad1.rumble(.5, .5, 500);
-                gamepad2.rumble(.5, .5, 500);
+                gamepad1.rumble(.75, .75, 750);
+                gamepad2.rumble(.75, .75, 750);
                 secondRumble = true;
             }
         }
@@ -292,8 +318,7 @@ public class TeleOPV1 extends OpMode {
 
             driver: {
                 if(this.gamepad1.y) {
-                    drive.setPoseEstimate(new Pose2d(pose.getX(),pose.getY(),0));
-                    controller.reset(drive.getPoseEstimate());
+                    driveOffset = Math.toDegrees(pose.getHeading());
                 }
 
                 if(gamepad2.share && modeSwap.seconds() > 1) {
@@ -301,11 +326,26 @@ public class TeleOPV1 extends OpMode {
                     gunningMode = gunningMode == GunningMode.NORMAL ? GunningMode.CAP : GunningMode.NORMAL;
                 }
 
+                if(doorTimer.seconds() > .5 && !doorShutted) {
+                    depositController.set(false);
+                    doorShutted = true;
+                }
                 if(gamepad1.a && armServoTimer.seconds() > .5) {
-                    armServo.setPosition(armServoShut ? armServoOpenPos : armServoShutPos);
-                    armServoShut = !armServoShut;
                     armServoTimer.reset();
+                    lastHadFreight = false;
+                    lastFreight = FreightSensorController.Freight.NONE;
                     freight = FreightSensorController.Freight.NONE;
+                    if(armController.getSetPosition() == armStartPos) {
+                        depositController.set(false);
+                    } else {
+                        depositController.set(!depositController.getOut());
+                        if(armController.getSetPosition() == armConveyorPos) {
+                            conveyorController.spin((pose.getHeading() < 0));
+                            doorTimer.reset();
+                            doorShutted = false;
+                        }
+                    }
+
                 }
 
                 drivetrain: {
@@ -314,7 +354,7 @@ public class TeleOPV1 extends OpMode {
                             Vector2d input = new Vector2d(
                                     expTranslation ? Math.pow(gamepad1.left_stick_y, driveExp) * Math.signum(-gamepad1.left_stick_y) : -gamepad1.left_stick_y,
                                     expTranslation ? Math.pow(gamepad1.left_stick_x, driveExp) * Math.signum(-gamepad1.left_stick_x) : -gamepad1.left_stick_x
-                            ).rotated(-pose.getHeading() + Math.toDegrees(driveOffset));
+                            ).rotated(-pose.getHeading() + Math.toRadians(driveOffset));
                             double rotation = Math.pow(gamepad1.left_trigger, driveExp) - Math.pow(gamepad1.right_trigger, driveExp);
                             power = new Pose2d(input.getX(), input.getY(), rotation);
 //                        telemetry.addData("Input Power", power.toString());
@@ -326,42 +366,70 @@ public class TeleOPV1 extends OpMode {
                         drive.setWeightedDrivePower(controlled);
 
                         if(gamepad1.dpad_up || gamepad1.dpad_down || gamepad1.dpad_left || gamepad1.dpad_right) {
-                            TrajectorySequence toHub;
-                            if(pose.getY() < -24 && pose.getX() > 24) {
-                                drivingMode = DrivingMode.AUTO;
-                                drive.cancel();
-                                toHub = drive.trajectorySequenceBuilder(pose)
-                                        .lineToLinearHeading(new Pose2d(-1.5, -65.5, 0))
-                                        .addDisplacementMarker(.2, 0, () -> TeleOPV1.armController.setPosition((int) MainAutoV1.armTopPos))
-                                    .splineToLinearHeading(new Pose2d(-5.25, -42, Math.toRadians(-45)), Math.toRadians(90),
-                                            SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL * .75,
-                                                    DriveConstants.MAX_ANG_VEL * .75, DriveConstants.TRACK_WIDTH),
-                                            SampleMecanumDrive.getAccelerationConstraint(DriveConstants.MAX_ACCEL*.5))
-                                    .build();
-                                drive.followTrajectorySequenceAsync(toHub);
+                            if(PoseStorage.alliance == PoseStorage.Alliance.RED) {
+                                TrajectorySequence toHub;
+                                if(pose.getY() < -24 && pose.getX() > 24) {
+                                    drivingMode = DrivingMode.AUTO;
+                                    drive.cancel();
+                                    toHub = drive.trajectorySequenceBuilder(pose)
+                                            .lineToLinearHeading(new Pose2d(30, -65.5, 0))
+                                            .lineToLinearHeading(new Pose2d(-1.5, -65.5, 0))
+                                            .addDisplacementMarker(.2, 0, () -> TeleOPV1.armController.setPosition((int) MainAutoV1.armTopPos))
+                                            .splineToLinearHeading(new Pose2d(-5.25, -42, Math.toRadians(-45)), Math.toRadians(90),
+                                                    SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL * .75,
+                                                            DriveConstants.MAX_ANG_VEL * .75, DriveConstants.TRACK_WIDTH),
+                                                    SampleMecanumDrive.getAccelerationConstraint(DriveConstants.MAX_ACCEL*.5))
+                                            .build();
+                                    drive.followTrajectorySequenceAsync(toHub);
 
-                            } else if(pose.getX() < 24 && pose.getY() < -24) {
-                                drivingMode = DrivingMode.AUTO;
-                                drive.cancel();
-                                toHub = drive.trajectorySequenceBuilder(pose)
-                                        .addDisplacementMarker(.2, 0, () -> TeleOPV1.armController.setPosition((int) MainAutoV1.armTopPos))
-                                        .splineToLinearHeading(new Pose2d(-5.25, -42, Math.toRadians(-45)), Math.toRadians(90),
-                                                SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL * .75,
-                                                        DriveConstants.MAX_ANG_VEL * .75, DriveConstants.TRACK_WIDTH),
-                                                SampleMecanumDrive.getAccelerationConstraint(DriveConstants.MAX_ACCEL*.5))
-                                        .build();
-                                drive.followTrajectorySequenceAsync(toHub);
+                                } else if(pose.getX() < 24 && pose.getY() < -24) {
+                                    drivingMode = DrivingMode.AUTO;
+                                    drive.cancel();
+                                    toHub = drive.trajectorySequenceBuilder(pose)
+                                            .addDisplacementMarker(.2, 0, () -> TeleOPV1.armController.setPosition((int) MainAutoV1.armTopPos))
+                                            .splineToLinearHeading(new Pose2d(-5.25, -42, Math.toRadians(-45)), Math.toRadians(90),
+                                                    SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL * .75,
+                                                            DriveConstants.MAX_ANG_VEL * .75, DriveConstants.TRACK_WIDTH),
+                                                    SampleMecanumDrive.getAccelerationConstraint(DriveConstants.MAX_ACCEL*.5))
+                                            .build();
+                                    drive.followTrajectorySequenceAsync(toHub);
+                                }
+                            } else {
+                                TrajectorySequence toHub;
+                                if(pose.getY() > 24 && pose.getX() > 24) {
+                                    drivingMode = DrivingMode.AUTO;
+                                    drive.cancel();
+                                    toHub = drive.trajectorySequenceBuilder(pose)
+                                            .lineToLinearHeading(new Pose2d(30, 65.5, -0))
+                                            .lineToLinearHeading(new Pose2d(-1.5, 65.5, -0))
+                                            .addDisplacementMarker(.2, 0, () -> TeleOPV1.armController.setPosition((int) MainAutoV1.armTopPos))
+                                            .splineToLinearHeading(new Pose2d(-5.25, 42, Math.toRadians(-45)), Math.toRadians(-90),
+                                                    SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL * .75,
+                                                            DriveConstants.MAX_ANG_VEL * .75, DriveConstants.TRACK_WIDTH),
+                                                    SampleMecanumDrive.getAccelerationConstraint(DriveConstants.MAX_ACCEL*.5))
+                                            .build();
+                                    drive.followTrajectorySequenceAsync(toHub);
+
+                                } else if(pose.getX() < 24 && pose.getY() > 24) {
+                                    drivingMode = DrivingMode.AUTO;
+                                    drive.cancel();
+                                    toHub = drive.trajectorySequenceBuilder(pose)
+                                            .addDisplacementMarker(.2, 0, () -> TeleOPV1.armController.setPosition((int) MainAutoV1.armTopPos))
+                                            .splineToLinearHeading(new Pose2d(-5.25, 42, Math.toRadians(45)), Math.toRadians(-90),
+                                                    SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL * .75,
+                                                            DriveConstants.MAX_ANG_VEL * .75, DriveConstants.TRACK_WIDTH),
+                                                    SampleMecanumDrive.getAccelerationConstraint(DriveConstants.MAX_ACCEL*.5))
+                                            .build();
+                                    drive.followTrajectorySequenceAsync(toHub);
                             }
 
-                        }
+
+                        }}
                     } else {
                         if(Math.abs(gamepad1.left_stick_x) > .05 || Math.abs(gamepad1.left_stick_y) > .05 || gamepad1.right_trigger > .05 || gamepad1.left_trigger > .05) {
                             drivingMode = DrivingMode.MANUAL;
                             drive.cancel();
                             drive.setWeightedDrivePower(new Pose2d(0, 0, 0));
-                        }
-                        if(!drive.isBusy()) {
-                            drivingMode = DrivingMode.MANUAL;
                         }
                     }
 
@@ -438,39 +506,69 @@ public class TeleOPV1 extends OpMode {
 //                    armController.setPower(-gamepad1.right_stick_y);
 //                } else
 
-                    if(gamepad2.dpad_right || gamepad2.dpad_left || gamepad2.dpad_up || gamepad2.dpad_down){
+                    if((gamepad2.dpad_right || gamepad2.dpad_left || gamepad2.dpad_up || gamepad2.dpad_down) && armTimer.seconds() > .5){
 //                        if(armMode != DcMotor.RunMode.RUN_TO_POSITION) {
 //                            armMode = DcMotor.RunMode.RUN_TO_POSITION;
 //                            armController.setMode(DcMotor.RunMode.RUN_TO_POSITION);
 //                        }
+                        armTimer.reset();
                         armController.setPower(ArmController.armSetPosPower);
                         if(gamepad2.dpad_up) {
-                            armController.setPosition((int) (armTopPos - PoseStorage.armPos));
+                            if(armController.getSetPosition() == armTopPos){
+                                armController.setPosition((int) (armStartPos));
+                                depositController.set(false);
+                            } else {
+                                armController.setPosition((int) (armTopPos));
+                                intakeOn = false;
+                                depositController.hold();
+                            }
+                        }
+                        if(gamepad2.dpad_right) {
+                            if(armController.getSetPosition() == armMiddlePos){
+                                armController.setPosition((int) (armStartPos));
+                                depositController.set(false);
+
+                            } else {
+                                armController.setPosition((int) (armMiddlePos));
+                                depositController.hold();
+                            }
                             intakeOn = false;
                         }
-                        if(gamepad2.dpad_left || gamepad2.dpad_right) {
-                            armController.setPosition((int) (armStartPos- PoseStorage.armPos));
-                            armServo.setPosition(armServoShutPos);
+                        if(gamepad2.dpad_left) {
+                            if(armController.getSetPosition() == armConveyorPos){
+                                armController.setPosition((int) (armStartPos));
+                                depositController.set(false);
+                            } else {
+                                armController.setPosition((int) (armConveyorPos));
+                                depositController.hold();
+                                intakeOn = false;
+                            }
                         }
                         if(gamepad2.dpad_down) {
-                            armController.setPosition((int) (armBottomPos- PoseStorage.armPos));
+                            if(armController.getSetPosition() == armBottomPos){
+                                armController.setPosition((int) (armStartPos));
+                                depositController.set(false);
+
+                            } else {
+                                armController.setPosition((int) (armBottomPos));
+                                depositController.hold();
+                            }
                             intakeOn = false;
                         }
                     } else if(armMode == DcMotor.RunMode.RUN_USING_ENCODER) armController.setPower(0);
 
 
-                    if(capPos != capNormalPos) {
-                        capPos = capNormalPos;
-                        capServo.setPosition(capNormalPos);
-                    }
+//                    if(capPos != capNormalPos) {
+//                        capPos = capNormalPos;
+////                        capServo.setPosition(capNormalPos);
+//                    }
                 }
             } else
                 {
                 arm: {
 
-                if(!armServoShut) {
-                    armServo.setPosition(armServoShutPos);
-                    armServoShut = true;
+                if(depositController.getOut()) {
+                    depositController.set(false);
                 }
                 ArmController.armSetPosPower = .75;
 //                if (Math.abs(gamepad1.right_stick_y) > .05) {
@@ -493,45 +591,44 @@ public class TeleOPV1 extends OpMode {
                         }
                         if(gamepad2.dpad_left || gamepad2.dpad_right) {
                             armController.setPosition((int) (armStartPos));
-                            armServo.setPosition(armServoShutPos);
                         }
-                        if(gamepad2.dpad_down) {
-                            armController.setPosition((int) (armCapDownPos));
-                            capPos = capDownPos;
-                            capServo.setPosition(capDownPos);
-                        }
+//                        if(gamepad2.dpad_down) {
+//                            armController.setPosition((int) (armCapDownPos));
+//                            capPos = capDownPos;
+//                            capServo.setPosition(capDownPos);
+//                        }
                     } else if(armMode == DcMotor.RunMode.RUN_USING_ENCODER) armController.setPower(0);
 
-                    if(armController.getSetPosition() == armCapUpPos) {
-                        if(gamepad2.a && capTimer.seconds() > .5) {
-                            capTimer.reset();
-                            if(capPos == capUpPos) {
-                                capPos = capCappedPos;
-                                capServo.setPosition(capCappedPos);
-                            } else {
-                                capPos = capUpPos;
-                                capServo.setPosition(capUpPos);
-                            }
-                        }
-                    } else if(armController.getSetPosition() == armStartPos) {
-                        capPos = capNormalPos;
-                        capServo.setPosition(capNormalPos);
-                    } else if(armController.getSetPosition() == armCapDownPos) {
-                        if(gamepad2.a && capTimer.seconds() > .5) {
-                            capTimer.reset();
-                            if (capPos == capDownPos) {
-                                capPos = capDownDownPos;
-                                capServo.setPosition(capDownDownPos);
-                            } else {
-                                capPos = capDownPos;
-                                capServo.setPosition(capDownPos);
-                            }
-                        }
-                    }
+//                    if(armController.getSetPosition() == armCapUpPos) {
+//                        if(gamepad2.a && capTimer.seconds() > .5) {
+//                            capTimer.reset();
+//                            if(capPos == capUpPos) {
+//                                capPos = capCappedPos;
+//                                capServo.setPosition(capCappedPos);
+//                            } else {
+//                                capPos = capUpPos;
+//                                capServo.setPosition(capUpPos);
+//                            }
+//                        }
+//                    } else if(armController.getSetPosition() == armStartPos) {
+//                        capPos = capNormalPos;
+//                        capServo.setPosition(capNormalPos);
+//                    } else if(armController.getSetPosition() == armCapDownPos) {
+//                        if(gamepad2.a && capTimer.seconds() > .5) {
+//                            capTimer.reset();
+//                            if (capPos == capDownPos) {
+//                                capPos = capDownDownPos;
+//                                capServo.setPosition(capDownDownPos);
+//                            } else {
+//                                capPos = capDownPos;
+//                                capServo.setPosition(capDownPos);
+//                            }
+//                        }
+//                    }
                 }
                 intakeMotor.setPower(0);
             }
-            telemetry.addData("CapPosition", capServo.getPosition());
+//            telemetry.addData("CapPosition", capServo.getPosition());
             telemetry.addData("ArmPosition", armController.getPosition());
 
             tape: {
@@ -540,15 +637,15 @@ public class TeleOPV1 extends OpMode {
                 } else tapeExtendServo.setPower(0);
 
                 if(Math.abs(gamepad2.left_stick_y) > .05) {
-                    if(Math.abs(tapeTilt - gamepad2.left_stick_y/20) < 1)
+                    if(Math.abs(tapeTilt - gamepad2.left_stick_y/10) < 1)
                     {
-                        tapeTilt -= gamepad2.left_stick_y/20;
+                        tapeTilt -= gamepad2.left_stick_y/10;
                         tapeTiltServo.setPosition(tapeTilt);
                     }
                 }
                 if(Math.abs(gamepad2.left_stick_x) > .05) {
                    if(Math.abs(tapePan + gamepad2.left_stick_x/20) < 1){
-                       tapePan += gamepad2.left_stick_x/20;
+                       tapePan += gamepad2.left_stick_x/30;
                        tapePanServo.setPosition(tapePan);
                    }
                 }
@@ -607,21 +704,45 @@ public class TeleOPV1 extends OpMode {
 
 
         sensors: {
-//            hasmetal = metalDetector.getVoltage() > 1.5;
-//            if(hasmetal && !lastHadMetal) {
-//                gamepad1.rumble(1.0, 1.0, 1);
-//            }
-//            lastHadMetal = hasmetal;
+            FreightSensor.update();
+            if(armController.getPosition() < 20) {
+                freight = FreightSensor.getFreight() == FreightSensorController.Freight.NONE ? freight : FreightSensor.getFreight();
+            }
+
+            if(freight == FreightSensorController.Freight.HEAVYCUBE && !(lastFreight == FreightSensorController.Freight.HEAVYCUBE)) {
+                gamepad1.rumble(1.0, 1.0, 300);
+                gamepad2.rumble(1.0, 1.0, 300);
+            }
+            lastFreight = freight;
 //            freightDist = freightSensor.getDistance(DistanceUnit.INCH);
 //            freightDists.push(freightDist);
-            FreightSensor.update();
-            freight = FreightSensor.getFreight() == FreightSensorController.Freight.NONE ? freight : FreightSensor.getFreight();
+
+
+
             switch (freight) {
+                case HEAVYCUBE:
+                    depositController.hold();
+                    led.setPattern(RevBlinkinLedDriver.BlinkinPattern.RED);
+                    if(!lastHadFreight) {
+                        intakeReverse = true;
+                        lastHadFreight = true;
+                    }
+                    break;
                 case CUBE:
+                    depositController.hold();
                     led.setPattern(RevBlinkinLedDriver.BlinkinPattern.ORANGE);
+                    if(!lastHadFreight) {
+                        intakeReverse = true;
+                        lastHadFreight = true;
+                    }
                     break;
                 case BALL:
+                    depositController.hold();
                     led.setPattern(RevBlinkinLedDriver.BlinkinPattern.WHITE);
+                    if(!lastHadFreight) {
+                        intakeReverse = true;
+                        lastHadFreight = true;
+                    }
                     break;
                 case NONE:
                     led.setPattern(RevBlinkinLedDriver.BlinkinPattern.HOT_PINK);
@@ -636,10 +757,10 @@ public class TeleOPV1 extends OpMode {
 //            telemetry.addData("ferightDists", freightDists.avg());
             telemetry.addData("freightRGBA", "%s, %s, %s, %s", FreightSensor.red, FreightSensor.green, FreightSensor.blue, FreightSensor.alpha);
             telemetry.addData("combined Freight", FreightSensor.getSum());
-//            frontFloorDist = frontFloor.getDistance(DistanceUnit.INCH);
-//            backFloorDist = backFloor.getDistance(DistanceUnit.INCH);
+            frontFloorDist = frontFloor.getDistance(DistanceUnit.INCH);
+            backFloorDist = backFloor.getDistance(DistanceUnit.INCH);
 
-//            double yAngle = Math.atan2(frontFloorDist-backFloorDist, 10.25);
+            double yAngle = Math.atan2(frontFloorDist-backFloorDist, 10.25);
 //            telemetry.addData("robotangle", Math.toDegrees(yAngle));
         }
 

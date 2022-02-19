@@ -16,10 +16,10 @@ public class BlueWarehousePaths {
 
     public Pose2d startingPose = new Pose2d(3, 64, Math.toRadians(-90));
 
-    public TrajectorySequence toHubLeft, toHubCenter,  toHubRight,  intoWarehouseLeft, intoWarehouseCenter, intoWarehouseRight, toHub2, intoWarehouse2, toHub3, intoWarehouse3 ;
+    public TrajectorySequence toHubLeft, toHubCenter,  toHubRight,  intoWarehouseLeft, intoWarehouseCenter, intoWarehouseRight, toHub2, intoWarehouse2, toHub3, intoWarehouse3, toHub4 ;
 
     public enum Paths {
-        start, toHub, delivering, intoWarehouse, intaking, toHub2, delivering2, intoWarehouse2, toHub3, delivering3, intoWarehouse3;
+        start, toHub, delivering, intoWarehouse, intaking, toHub2, delivering2, intoWarehouse2, toHub3, delivering3, intoWarehouse3, toHub4, intoWarehouse4;
     }
 
     public Paths path = Paths.start;
@@ -46,7 +46,7 @@ public class BlueWarehousePaths {
 
         toHubCenter = drive.trajectorySequenceBuilder(startingPose)
                 .addDisplacementMarker(.1, 0, () -> TeleOPV1.armController.setPosition((int) MainAutoV1.armMiddlePos))
-                .splineToLinearHeading(new Pose2d(-.25, 47.25, Math.toRadians(45)), Math.toRadians(-90),
+                .splineToLinearHeading(new Pose2d(2.75, 47.25, Math.toRadians(45)), Math.toRadians(-90),
                         SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL * .75,
                                 DriveConstants.MAX_ANG_VEL * .75, DriveConstants.TRACK_WIDTH),
                         SampleMecanumDrive.getAccelerationConstraint(DriveConstants.MAX_ACCEL*.5))
@@ -54,13 +54,14 @@ public class BlueWarehousePaths {
 
         toHubRight = drive.trajectorySequenceBuilder(startingPose)
                 .addDisplacementMarker(.2, 0, () -> TeleOPV1.armController.setPosition((int) MainAutoV1.armTopPos))
-                .splineToLinearHeading(new Pose2d(-5.25, 42, Math.toRadians(45)), Math.toRadians(-90),
-                        SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL * .75,
-                                DriveConstants.MAX_ANG_VEL * .75, DriveConstants.TRACK_WIDTH),
+                .splineToLinearHeading(new Pose2d(-8.25, 49, Math.toRadians(70)), Math.toRadians(-90),
+                        SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL * 75,
+                                DriveConstants.MAX_ANG_VEL * 75, DriveConstants.TRACK_WIDTH),
                         SampleMecanumDrive.getAccelerationConstraint(DriveConstants.MAX_ACCEL*.5))
                 .build();
 
         intoWarehouseLeft = drive.trajectorySequenceBuilder(toHubLeft.end())
+                .addTemporalMarker(0, 0.5, () -> TeleOPV1.depositController.set(false))
                 .splineToLinearHeading(new Pose2d(0, 66.5, Math.toRadians(0)), Math.toRadians(0))
                 .addDisplacementMarker(() -> TeleOPV1.armController.setPosition((int) MainAutoV1.armStartPos))
                 .splineToSplineHeading(new Pose2d(22, 66.5, 0), Math.toRadians(0))
@@ -75,6 +76,7 @@ public class BlueWarehousePaths {
                 .build();
 
         intoWarehouseCenter = drive.trajectorySequenceBuilder(toHubCenter.end())
+                .addTemporalMarker(0, 0.5, () -> TeleOPV1.depositController.set(false))
                 .splineToLinearHeading(new Pose2d(0, 66.5, Math.toRadians(0)), Math.toRadians(0))
                 .addDisplacementMarker(() -> TeleOPV1.armController.setPosition((int) MainAutoV1.armStartPos))
                 .splineToSplineHeading(new Pose2d(22, 66.5, 0), Math.toRadians(0))
@@ -89,16 +91,17 @@ public class BlueWarehousePaths {
                 .build();
 
         intoWarehouseRight = drive.trajectorySequenceBuilder(toHubRight.end())
-                .splineToLinearHeading(new Pose2d(0, 66.5, Math.toRadians(0)), Math.toRadians(0))
+                .addTemporalMarker(0, 0.5, () -> TeleOPV1.depositController.set(false))
+                .splineToLinearHeading(new Pose2d(0, 67.5, Math.toRadians(0)), Math.toRadians(0))
                 .addDisplacementMarker(() -> TeleOPV1.armController.setPosition((int) MainAutoV1.armStartPos))
-                .splineToSplineHeading(new Pose2d(22, 66.5, 0), Math.toRadians(0))
+                .splineToSplineHeading(new Pose2d(22, 67.5, 0), Math.toRadians(0))
                 .addDisplacementMarker(.3, 0, () -> {
                     MainAutoV1.intakeOn = true;
                     MainAutoV1.intakeReverse = false;
                 })
                 .splineToConstantHeading(new Vector2d(46, 66.5), Math.toRadians(0),
-                        SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL*.25,
-                                DriveConstants.MAX_ANG_VEL*.25, DriveConstants.TRACK_WIDTH),
+                        SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL*.35,
+                                DriveConstants.MAX_ANG_VEL*.35, DriveConstants.TRACK_WIDTH),
                         SampleMecanumDrive.getAccelerationConstraint(DriveConstants.MAX_ACCEL*.25))
                 .build();
 
@@ -116,8 +119,11 @@ public class BlueWarehousePaths {
                     MainAutoV1.intakeOn = true;
                     MainAutoV1.intakeReverse = true;
                 })
-                .addDisplacementMarker(() -> TeleOPV1.armController.setPosition((int) MainAutoV1.armTopPos))
-                .lineToLinearHeading(new Pose2d(-1, 41, Math.toRadians(45)),
+                .addDisplacementMarker(() -> {
+                    TeleOPV1.armController.setPosition((int) MainAutoV1.armTopPos);
+                    TeleOPV1.depositController.hold();
+                })
+                .splineToLinearHeading(new Pose2d(-6, 46, Math.toRadians(70)), Math.toRadians(-90),
                         SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL * .75,
                                 DriveConstants.MAX_ANG_VEL * .75, DriveConstants.TRACK_WIDTH),
                         SampleMecanumDrive.getAccelerationConstraint(DriveConstants.MAX_ACCEL*.5))
@@ -125,16 +131,17 @@ public class BlueWarehousePaths {
                 .build();
 
         intoWarehouse2 = drive.trajectorySequenceBuilder(toHub2.end())
-                .splineToLinearHeading(new Pose2d(0, 66.5, Math.toRadians(0)), Math.toRadians(0))
+                .addTemporalMarker(0, 0.5, () -> TeleOPV1.depositController.set(false))
+                .splineToLinearHeading(new Pose2d(0, 67, Math.toRadians(0)), Math.toRadians(0))
                 .addDisplacementMarker(() -> TeleOPV1.armController.setPosition((int) MainAutoV1.armStartPos))
-                .splineToSplineHeading(new Pose2d(27, 66.5, 0), Math.toRadians(0))
+                .splineToSplineHeading(new Pose2d(27, 67, 0), Math.toRadians(0))
                 .addDisplacementMarker(.3, 0, () -> {
                     MainAutoV1.intakeOn = true;
                     MainAutoV1.intakeReverse = false;
                 })
                 .splineToConstantHeading(new Vector2d(53, 66.5), Math.toRadians(0),
-                        SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL*.25,
-                                DriveConstants.MAX_ANG_VEL*.25, DriveConstants.TRACK_WIDTH),
+                        SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL*.35,
+                                DriveConstants.MAX_ANG_VEL*.35, DriveConstants.TRACK_WIDTH),
                         SampleMecanumDrive.getAccelerationConstraint(DriveConstants.MAX_ACCEL*.25))
                 .build();
 
@@ -149,8 +156,11 @@ public class BlueWarehousePaths {
                     MainAutoV1.intakeOn = true;
                     MainAutoV1.intakeReverse = true;
                 })
-                .addDisplacementMarker(() -> TeleOPV1.armController.setPosition((int) MainAutoV1.armTopPos))
-                .lineToLinearHeading(new Pose2d(.5, 42, Math.toRadians(45)),
+                .addDisplacementMarker(() -> {
+                    TeleOPV1.armController.setPosition((int) MainAutoV1.armTopPos);
+                    TeleOPV1.depositController.hold();
+                })
+                .splineToLinearHeading(new Pose2d(-7, 45, Math.toRadians(70)), Math.toRadians(-90),
                         SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL * .75,
                                 DriveConstants.MAX_ANG_VEL * .75, DriveConstants.TRACK_WIDTH),
                         SampleMecanumDrive.getAccelerationConstraint(DriveConstants.MAX_ACCEL*.5))
@@ -158,9 +168,10 @@ public class BlueWarehousePaths {
                 .build();
 
         intoWarehouse3 = drive.trajectorySequenceBuilder(toHub3.end())
-                .splineToLinearHeading(new Pose2d(0, 66.5, Math.toRadians(0)), Math.toRadians(0))
+                .addTemporalMarker(0, 0.5, () -> TeleOPV1.depositController.set(false))
+                .splineToLinearHeading(new Pose2d(0, 67.5, Math.toRadians(0)), Math.toRadians(0))
                 .addDisplacementMarker(() -> TeleOPV1.armController.setPosition((int) MainAutoV1.armStartPos))
-                .splineToSplineHeading(new Pose2d(36, 67.5, 0), Math.toRadians(0))
+                .splineToSplineHeading(new Pose2d(36, 68.5, 0), Math.toRadians(0))
                 .build();
 
 

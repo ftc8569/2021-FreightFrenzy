@@ -10,8 +10,8 @@ import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 public class ArmHardware2021 extends ArmHardware{
 
     private DcMotorEx armMotor;
-    public static PIDFCoefficients veloPID = new PIDFCoefficients(7, 0, 0,12 ), //we might do some custom pid here later
-                             positionPID = new PIDFCoefficients(8, 0, 0, 0);
+    public static PIDFCoefficients veloPID = new PIDFCoefficients(9, 0, 0,14 ), //we might do some custom pid here later
+                             positionPID = new PIDFCoefficients(10, 0, 0, 0);
 
     public static int targetPosTolerance = 30;
 
@@ -20,10 +20,10 @@ public class ArmHardware2021 extends ArmHardware{
         armMotor = hw.get(DcMotorEx.class, "armMotor");
         armMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         armMotor.setTargetPosition(0);
-        armMotor.setTargetPositionTolerance(targetPosTolerance);
         armMotor.setMode(mode);
         armMotor.setPIDFCoefficients(DcMotor.RunMode.RUN_TO_POSITION, positionPID);
         armMotor.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, veloPID);
+        armMotor.setTargetPositionTolerance(targetPosTolerance);
         armMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
     }
 

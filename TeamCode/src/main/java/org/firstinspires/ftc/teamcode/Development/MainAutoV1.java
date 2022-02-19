@@ -16,6 +16,7 @@ import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.teamcode.Controllers.ArmController;
 import org.firstinspires.ftc.teamcode.Controllers.ArmHardware2021;
 import org.firstinspires.ftc.teamcode.Controllers.CupFinder;
+import org.firstinspires.ftc.teamcode.Controllers.FreightSensorController;
 import org.firstinspires.ftc.teamcode.Development.AutoPaths.BlueDuckPaths;
 import org.firstinspires.ftc.teamcode.Development.AutoPaths.BlueWarehousePaths;
 import org.firstinspires.ftc.teamcode.Development.AutoPaths.RedDuckPaths;
@@ -122,6 +123,7 @@ public class MainAutoV1 extends TeleOPV1 {
             blueWarehousePaths = new BlueWarehousePaths(drive);
         }
 
+        depositController.hold();
 
         telemetry.addData(">", "Actually Initialized!!!");
         telemetry.update();
@@ -138,8 +140,10 @@ public class MainAutoV1 extends TeleOPV1 {
             case RED:
                 duckDirection = -1;
                 if(PoseStorage.startingPosition == PoseStorage.StartingPosition.WAREHOUSE) {
+                    PoseStorage.endPose = redWarehousePaths.startingPose;
                     led.setPattern(RevBlinkinLedDriver.BlinkinPattern.RED_ORANGE);
                 } else {
+                    PoseStorage.endPose = redDuckPaths.startingPose;
                     led.setPattern(RevBlinkinLedDriver.BlinkinPattern.RED);
                 }
                 break;
@@ -148,7 +152,9 @@ public class MainAutoV1 extends TeleOPV1 {
                 duckDirection = 1;
                 if(PoseStorage.startingPosition == PoseStorage.StartingPosition.WAREHOUSE) {
                     led.setPattern(RevBlinkinLedDriver.BlinkinPattern.BLUE_GREEN);
+                    PoseStorage.endPose = blueWarehousePaths.startingPose;
                 } else {
+                    PoseStorage.endPose = blueDuckPaths.startingPose;
                     led.setPattern(RevBlinkinLedDriver.BlinkinPattern.BLUE);
                 }
                 break;
@@ -223,14 +229,15 @@ public class MainAutoV1 extends TeleOPV1 {
                                 if (!drive.isBusy()) {
                                     redWarehousePaths.setPath(RedWarehousePaths.Paths.delivering);
                                     deliveryTimer.reset();
-                                    armServo.setPosition(armServoOpenPos);
+                                    depositController.set(true);
                                 }
                                 break;
                             }
                             case delivering: {
                                 if (deliveryTimer.seconds() > .75) {
                                     redWarehousePaths.setPath(RedWarehousePaths.Paths.intoWarehouse);
-                                    armServo.setPosition(armServoShutPos);
+                                    depositController.set(false);
+                                    freight = FreightSensorController.Freight.NONE;
                                     switch (position) {
                                         case LEFT:
                                             drive.followTrajectorySequenceAsync(redWarehousePaths.intoWarehouseLeft);
@@ -249,8 +256,7 @@ public class MainAutoV1 extends TeleOPV1 {
                             }
                             case intoWarehouse: {
                                 FreightSensor.update();
-                                freight = FreightSensor.getFreight();
-                                hasFreight = FreightSensor.hasFreight();
+                                freight= FreightSensor.getFreight();
                                 switch (freight) {
                                     case CUBE:
                                         led.setPattern(RevBlinkinLedDriver.BlinkinPattern.ORANGE);
@@ -263,10 +269,9 @@ public class MainAutoV1 extends TeleOPV1 {
                                         break;
                                 }
 
-                                if (!drive.isBusy()
-//                                        || hasFreight
-                                ) {
+                                if (!drive.isBusy()) {
                                     drive.cancel();
+                                    depositController.hold();
                                     redWarehousePaths.setPath(RedWarehousePaths.Paths.toHub2);
 //                                    redWarehousePaths.generateToHub2();
                                     drive.followTrajectorySequenceAsync(redWarehousePaths.toHub2);
@@ -276,7 +281,7 @@ public class MainAutoV1 extends TeleOPV1 {
                             case toHub2: {
                                 if (!drive.isBusy()) {
                                     redWarehousePaths.setPath(RedWarehousePaths.Paths.delivering2);
-                                    armServo.setPosition(armServoOpenPos);
+                                    depositController.set(true);
                                     deliveryTimer.reset();
 
                                 }
@@ -284,7 +289,7 @@ public class MainAutoV1 extends TeleOPV1 {
                             }
                             case delivering2: {
                                 if (deliveryTimer.seconds() > .75) {
-                                    armServo.setPosition(armServoShutPos);
+                                    depositController.set(false);
                                     redWarehousePaths.setPath(RedWarehousePaths.Paths.intoWarehouse2);
                                     drive.followTrajectorySequenceAsync(redWarehousePaths.intoWarehouse2);
                                 }
@@ -293,7 +298,6 @@ public class MainAutoV1 extends TeleOPV1 {
                             case intoWarehouse2: {
                                 FreightSensor.update();
                                 freight = FreightSensor.getFreight();
-                                hasFreight = FreightSensor.hasFreight();
                                 switch (freight) {
                                     case CUBE:
                                         led.setPattern(RevBlinkinLedDriver.BlinkinPattern.ORANGE);
@@ -306,9 +310,8 @@ public class MainAutoV1 extends TeleOPV1 {
                                         break;
                                 }
 
-                                if (!drive.isBusy()
-//                                        || hasFreight
-                                ) {
+                                if (!drive.isBusy()) {
+                                    depositController.hold();
                                     drive.cancel();
                                     redWarehousePaths.setPath(RedWarehousePaths.Paths.toHub3);
 //                                    redWarehousePaths.generateToHub3();
@@ -319,14 +322,14 @@ public class MainAutoV1 extends TeleOPV1 {
                             case toHub3: {
                                 if (!drive.isBusy()) {
                                     redWarehousePaths.setPath(RedWarehousePaths.Paths.delivering3);
-                                    armServo.setPosition(armServoOpenPos);
+                                    depositController.set(true);
                                     deliveryTimer.reset();
                                 }
                                 break;
                             }
                             case delivering3: {
                                 if (deliveryTimer.seconds() > .75) {
-                                    armServo.setPosition(armServoShutPos);
+                                    depositController.set(false);
                                     redWarehousePaths.setPath(RedWarehousePaths.Paths.intoWarehouse3);
                                     drive.followTrajectorySequenceAsync(redWarehousePaths.intoWarehouse3);
                                 }
@@ -367,14 +370,13 @@ public class MainAutoV1 extends TeleOPV1 {
                                 if (!drive.isBusy()) {
                                     blueWarehousePaths.setPath(BlueWarehousePaths.Paths.delivering);
                                     deliveryTimer.reset();
-                                    armServo.setPosition(armServoOpenPos);
+                                    depositController.set(true);
                                 }
                                 break;
                             }
                             case delivering: {
-                                if (deliveryTimer.seconds() > .75) {
+                                if (deliveryTimer.seconds() > 0) {
                                     blueWarehousePaths.setPath(BlueWarehousePaths.Paths.intoWarehouse);
-                                    armServo.setPosition(armServoShutPos);
                                     switch (position) {
                                         case LEFT:
                                             drive.followTrajectorySequenceAsync(blueWarehousePaths.intoWarehouseLeft);
@@ -394,7 +396,6 @@ public class MainAutoV1 extends TeleOPV1 {
                             case intoWarehouse: {
                                 FreightSensor.update();
                                 freight = FreightSensor.getFreight();
-                                hasFreight = FreightSensor.hasFreight();
                                 switch (freight) {
                                     case CUBE:
                                         led.setPattern(RevBlinkinLedDriver.BlinkinPattern.ORANGE);
@@ -407,9 +408,8 @@ public class MainAutoV1 extends TeleOPV1 {
                                         break;
                                 }
 
-                                if (!drive.isBusy()
-//                                        || hasFreight
-                                ) {
+                                if (!drive.isBusy()) {
+                                    depositController.hold();
                                     drive.cancel();
                                     blueWarehousePaths.setPath(BlueWarehousePaths.Paths.toHub2);
 //                                    blueWarehousePaths.generateToHub2();
@@ -420,15 +420,14 @@ public class MainAutoV1 extends TeleOPV1 {
                             case toHub2: {
                                 if (!drive.isBusy()) {
                                     blueWarehousePaths.setPath(BlueWarehousePaths.Paths.delivering2);
-                                    armServo.setPosition(armServoOpenPos);
+                                    depositController.set(true);
                                     deliveryTimer.reset();
 
                                 }
                                 break;
                             }
                             case delivering2: {
-                                if (deliveryTimer.seconds() > .75) {
-                                    armServo.setPosition(armServoShutPos);
+                                if (deliveryTimer.seconds() > 0) {
                                     blueWarehousePaths.setPath(BlueWarehousePaths.Paths.intoWarehouse2);
                                     drive.followTrajectorySequenceAsync(blueWarehousePaths.intoWarehouse2);
                                 }
@@ -437,7 +436,6 @@ public class MainAutoV1 extends TeleOPV1 {
                             case intoWarehouse2: {
                                 FreightSensor.update();
                                 freight = FreightSensor.getFreight();
-                                hasFreight = FreightSensor.hasFreight();
                                 switch (freight) {
                                     case CUBE:
                                         led.setPattern(RevBlinkinLedDriver.BlinkinPattern.ORANGE);
@@ -450,9 +448,8 @@ public class MainAutoV1 extends TeleOPV1 {
                                         break;
                                 }
 
-                                if (!drive.isBusy()
-//                                        || hasFreight
-                                ) {
+                                if (!drive.isBusy()) {
+                                    depositController.hold();
                                     drive.cancel();
                                     blueWarehousePaths.setPath(BlueWarehousePaths.Paths.toHub3);
 //                                    blueWarehousePaths.generateToHub3();
@@ -463,14 +460,13 @@ public class MainAutoV1 extends TeleOPV1 {
                             case toHub3: {
                                 if (!drive.isBusy()) {
                                     blueWarehousePaths.setPath(BlueWarehousePaths.Paths.delivering3);
-                                    armServo.setPosition(armServoOpenPos);
+                                    depositController.set(true);
                                     deliveryTimer.reset();
                                 }
                                 break;
                             }
                             case delivering3: {
-                                if (deliveryTimer.seconds() > .75) {
-                                    armServo.setPosition(armServoShutPos);
+                                if (deliveryTimer.seconds() > 0) {
                                     blueWarehousePaths.setPath(BlueWarehousePaths.Paths.intoWarehouse3);
                                     drive.followTrajectorySequenceAsync(blueWarehousePaths.intoWarehouse3);
                                 }
@@ -530,7 +526,7 @@ public class MainAutoV1 extends TeleOPV1 {
                             case toHub: {
                                 if (!drive.isBusy()) {
                                     redDuckPaths.setPath(RedDuckPaths.Paths.delivering);
-                                    armServo.setPosition(armServoOpenPos);
+                                    depositController.set(true);
                                     deliveryTimer.reset();
                                 }
                                 break;
@@ -538,7 +534,7 @@ public class MainAutoV1 extends TeleOPV1 {
                             case delivering: {
                                 if (deliveryTimer.seconds() > .75) {
                                     redDuckPaths.setPath(RedDuckPaths.Paths.toStorage);
-                                    armServo.setPosition(armServoShutPos);
+                                    depositController.set(false);
                                     armController.setPosition((int) armStartPos);
                                     switch (position) {
                                         case LEFT:
@@ -606,7 +602,7 @@ public class MainAutoV1 extends TeleOPV1 {
                             case toHub: {
                                 if (!drive.isBusy()) {
                                     blueDuckPaths.setPath(BlueDuckPaths.Paths.delivering);
-                                    armServo.setPosition(armServoOpenPos);
+                                    depositController.set(true);
                                     deliveryTimer.reset();
                                 }
                                 break;
@@ -614,7 +610,7 @@ public class MainAutoV1 extends TeleOPV1 {
                             case delivering: {
                                 if (deliveryTimer.seconds() > .75) {
                                     blueDuckPaths.setPath(BlueDuckPaths.Paths.toStorage);
-                                    armServo.setPosition(armServoShutPos);
+                                    depositController.set(false);
                                     armController.setPosition((int) armStartPos);
                                     switch (position) {
                                         case LEFT:

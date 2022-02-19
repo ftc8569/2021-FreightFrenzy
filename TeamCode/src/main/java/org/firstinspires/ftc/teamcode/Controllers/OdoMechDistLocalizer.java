@@ -119,6 +119,8 @@ public class OdoMechDistLocalizer implements Localizer {
 
 //        distLocalizer.setPoseEstimate(bestPoseEstimate);
         lastBestLocalizer = bestCurrentLocalizer;
+
+        bestPoseEstimate = new Pose2d(bestPoseEstimate.getX(), bestPoseEstimate.getY(), Angle.normDelta(bestPoseEstimate.getHeading()));
     }
 
     public void setOdometry(boolean up) {

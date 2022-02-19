@@ -50,7 +50,7 @@ public class RedDuckAutoWarehouse extends TeleOPV1 {
 
         toDuck = drive.trajectoryBuilder(startPose)
                 .splineToConstantHeading(new Vector2d(-65, -48), Math.toRadians(180))
-                .addDisplacementMarker(() -> duckWheelMotor2.setPower(duckWheelSpeed * (PoseStorage.alliance == PoseStorage.Alliance.BLUE ? 1 : -1)))
+                .addDisplacementMarker(() -> conveyorMotor.setPower(duckWheelSpeed * (PoseStorage.alliance == PoseStorage.Alliance.BLUE ? 1 : -1)))
                 .addDisplacementMarker(() -> drive.followTrajectoryAsync(toDuck2))
                 .build();
 
@@ -109,7 +109,7 @@ public class RedDuckAutoWarehouse extends TeleOPV1 {
 //
             case spinDuck: {
                 if(System.currentTimeMillis() - duckSpinTimer > duckSpinTime) {
-                    duckWheelMotor2.setPower(0);
+                    conveyorMotor.setPower(0);
 //                    requestOpModeStop();
                     drive.followTrajectoryAsync(toHub);
 //                    intakeMotor.setPower(intakeSpeed);
@@ -129,7 +129,7 @@ public class RedDuckAutoWarehouse extends TeleOPV1 {
 
             case deposit: {
                 if(Math.abs(armController.getPosition() - armTopPos*.6) < ArmHardware2021.targetPosTolerance) {
-                    armServo.setPosition(armServoOpenPos);
+                    depositController.set(true);
                 }
                 if(Math.abs(armController.getPosition() - armTopPos) < ArmHardware2021.targetPosTolerance) {
 //                    armServo.setPosition(armServoShutPos);
@@ -143,7 +143,7 @@ public class RedDuckAutoWarehouse extends TeleOPV1 {
 
             case toWarehouse: {
                 if(Math.abs(armController.getPosition() - armTopPos*.6) < ArmHardware2021.targetPosTolerance) {
-                    armServo.setPosition(armServoShutPos);
+                    depositController.set(false);
                 }
                 if(!drive.isBusy()) {
                     armController.setPower(0);

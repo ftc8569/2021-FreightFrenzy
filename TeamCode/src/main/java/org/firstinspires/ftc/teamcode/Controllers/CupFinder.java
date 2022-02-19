@@ -58,8 +58,10 @@ public class CupFinder extends OpenCvPipeline
     private Mat outputImageBGR = new Mat();
     private Mat outputImageRBG = new Mat();
     public Rect BoundingRectangle = null;
-    public static int colorErrorTolerance = 30;
-    Scalar base = new Scalar(165, 200, 200);
+    public static int colorErrorTolerance = 50;
+    public static int baseH = 162, baseS = 125, baseV = 150;
+    public static int areaThreshold = 1500;
+    Scalar base = new Scalar(baseH, baseS, baseV);
     Scalar lower = new Scalar(base.val[0] - 7.5, base.val[1] -colorErrorTolerance, base.val[2] - colorErrorTolerance);
     Scalar upper = new Scalar(base.val[0] + 7.5, base.val[1] +colorErrorTolerance, base.val[2] + colorErrorTolerance);
 
@@ -158,12 +160,23 @@ public class CupFinder extends OpenCvPipeline
                 double yScreenRelativeCenter = rectYCenter - input.height()/2.0;
                 centerOFTarget = new Point(xScreenRelativeCenter, yScreenRelativeCenter);
 
+
                 if(PoseStorage.alliance == PoseStorage.Alliance.RED) {
-                    if (BoundingRectangle.x <= 250) positionDetected = PositionEnum.LEFT;
+                    if(measuredArea < areaThreshold) {
+                        positionDetected = PositionEnum.RIGHT;
+                    } else {
+                        if (BoundingRectangle.x <= 250) positionDetected = PositionEnum.LEFT;
                     else positionDetected = PositionEnum.CENTER;
+                    }
+
                 } else {
-                    if (BoundingRectangle.x <= 250) positionDetected = PositionEnum.CENTER;
-                    else positionDetected = PositionEnum.RIGHT;
+                    if(measuredArea < areaThreshold) {
+                        positionDetected = PositionEnum.LEFT;
+                    } else {
+                        if (BoundingRectangle.x <= 250) positionDetected = PositionEnum.CENTER;
+                        else positionDetected = PositionEnum.RIGHT;
+                    }
+
                 }
 
 
