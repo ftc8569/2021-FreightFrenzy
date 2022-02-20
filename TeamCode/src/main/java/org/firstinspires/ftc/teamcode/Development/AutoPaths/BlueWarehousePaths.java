@@ -109,7 +109,7 @@ public class BlueWarehousePaths {
 
 
         toHub2 = drive.trajectorySequenceBuilder(intoWarehouseRight.end().minus(new Pose2d(0, 0, 0)))
-                .lineToConstantHeading(new Vector2d(-1.5, 67.5), SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL*.25,
+                .lineToConstantHeading(new Vector2d(-1.5, 64.55), SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL*.25,
                         DriveConstants.MAX_ANG_VEL*.25, DriveConstants.TRACK_WIDTH),
                         SampleMecanumDrive.getAccelerationConstraint(DriveConstants.MAX_ACCEL*.25))
                 .addDisplacementMarker(() -> {
@@ -149,7 +149,7 @@ public class BlueWarehousePaths {
                 .build();
 
         toHub3 = drive.trajectorySequenceBuilder(intoWarehouse2.end().minus(new Pose2d(0, 0, 0)))
-                .lineToLinearHeading(new Pose2d(-1.5, 67.75, Math.toRadians(1)), SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL*.25,
+                .lineToLinearHeading(new Pose2d(-4.5, 66.75, Math.toRadians(1)), SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL*.25,
                         DriveConstants.MAX_ANG_VEL*.25, DriveConstants.TRACK_WIDTH),
                         SampleMecanumDrive.getAccelerationConstraint(DriveConstants.MAX_ACCEL*.25))
                 .addDisplacementMarker(() -> {

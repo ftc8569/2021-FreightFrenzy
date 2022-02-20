@@ -13,7 +13,7 @@ import org.firstinspires.ftc.teamcode.roadrunner.trajectorysequence.TrajectorySe
 
 public class BlueDuckPaths {
 
-    public Pose2d startingPose = new Pose2d(-43, 62.2, Math.toRadians(-90));
+    public Pose2d startingPose = new Pose2d(-43, 67.2, Math.toRadians(-90));
 
     public TrajectorySequence toHubLeft, toDuck, toHubCenter,  toHubRight, toStorageLeft, toStorageCenter, toStorageRight;
 
@@ -62,7 +62,7 @@ public class BlueDuckPaths {
         toHubRight = drive.trajectorySequenceBuilder(toDuck.end())
                 .addDisplacementMarker(.2, 0, () -> TeleOPV1.armController.setPosition((int) MainAutoV1.armTopPos))
                 .lineToConstantHeading(new Vector2d(-65, 24))
-                .splineToLinearHeading(new Pose2d(-30.5, 24, Math.toRadians(-180)), Math.toRadians(-0),
+                .splineToLinearHeading(new Pose2d(-31.5, 24, Math.toRadians(-180)), Math.toRadians(-0),
                         SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL * .5,
                                 DriveConstants.MAX_ANG_VEL * .5, DriveConstants.TRACK_WIDTH),
                         SampleMecanumDrive.getAccelerationConstraint(DriveConstants.MAX_ACCEL * .25))

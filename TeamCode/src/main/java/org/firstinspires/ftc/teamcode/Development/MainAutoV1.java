@@ -63,6 +63,8 @@ public class MainAutoV1 extends TeleOPV1 {
     double[] distances;
     double frontDist, backDist, leftDist, rightDist;
 
+    boolean cameraSet = false;
+
 
     @Override
     public void init() {
@@ -123,6 +125,9 @@ public class MainAutoV1 extends TeleOPV1 {
             blueWarehousePaths = new BlueWarehousePaths(drive);
         }
 
+        tapePanServo.setPosition(tapePanVisionPos);
+        tapeTiltServo.setPosition(tapeTiltVisionPos);
+
         depositController.hold();
 
         telemetry.addData(">", "Actually Initialized!!!");
@@ -131,6 +136,7 @@ public class MainAutoV1 extends TeleOPV1 {
 
     @Override
     public void init_loop() {
+
         drive.update();
         Position pos = findPosition();
         PoseStorage.alliance = pos.getAlliance();
@@ -184,6 +190,11 @@ public class MainAutoV1 extends TeleOPV1 {
             FtcDashboard.getInstance().stopCameraStream();
             webcamStreaming = false;
             led.setPattern(RevBlinkinLedDriver.BlinkinPattern.HOT_PINK);
+        }
+        if(!cameraSet) {
+            tapeTiltServo.setPosition(tapeTiltNormalPos);
+            tapePanServo.setPosition(tapePanNormalPos);
+            cameraSet = true;
         }
         drive.update();
         duck.update();

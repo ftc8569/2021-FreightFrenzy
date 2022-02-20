@@ -70,7 +70,7 @@ public class RedDuckPaths {
 
         toStorageLeft = drive.trajectorySequenceBuilder(toHubLeft.end())
                 .splineToConstantHeading(new Vector2d(-40, -24), Math.toRadians(180))
-                .splineToLinearHeading(new Pose2d(-62, -35.25, Math.toRadians(-90)), Math.toRadians(-90),
+                .splineToLinearHeading(new Pose2d(-62, -36.25, Math.toRadians(-90)), Math.toRadians(-90),
                         SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL * .75,
                                 DriveConstants.MAX_ANG_VEL * .75, DriveConstants.TRACK_WIDTH),
                         SampleMecanumDrive.getAccelerationConstraint(DriveConstants.MAX_ACCEL * .5))
@@ -78,7 +78,7 @@ public class RedDuckPaths {
 
         toStorageCenter = drive.trajectorySequenceBuilder(toHubCenter.end())
                 .splineToConstantHeading(new Vector2d(-40, -24), Math.toRadians(180))
-                .splineToLinearHeading(new Pose2d(-62, -35.5, Math.toRadians(-90)), Math.toRadians(-90),
+                .splineToLinearHeading(new Pose2d(-62, -36.5, Math.toRadians(-90)), Math.toRadians(-90),
                         SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL * .75,
                                 DriveConstants.MAX_ANG_VEL * .75, DriveConstants.TRACK_WIDTH),
                         SampleMecanumDrive.getAccelerationConstraint(DriveConstants.MAX_ACCEL * .5))

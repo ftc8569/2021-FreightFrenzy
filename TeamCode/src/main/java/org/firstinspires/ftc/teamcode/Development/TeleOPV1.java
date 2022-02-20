@@ -45,12 +45,12 @@ public class TeleOPV1 extends OpMode {
 
     public final double gearRatioRatio = 1.3982683982683982683982683982684;
     public static double intakeSpeed = 1,
-                         intakeOutSpeed = 1,
+                         intakeOutSpeed = .7,
                          duckWheelSpeed = .6,
                          armStartPos = 0 - PoseStorage.armPos,
-                         armTopPos = 1070 - PoseStorage.armPos,
-                         armMiddlePos = 1386 - PoseStorage.armPos,
-                         armBottomPos = 1600 - PoseStorage.armPos,
+                         armTopPos = 1350 - PoseStorage.armPos,
+                         armMiddlePos = 1804 - PoseStorage.armPos,
+                         armBottomPos = 2260 - PoseStorage.armPos,
                          armConveyorPos =
 //                                 403 - PoseStorage.armPos, // temporary
                                  410 - PoseStorage.armPos, // with new bucket
@@ -249,12 +249,14 @@ public class TeleOPV1 extends OpMode {
         tapePanServo = hardwareMap.get(ServoImplEx.class, "tapePanServo");
         tapePanServo.setPwmRange(new PwmControl.PwmRange(500, 2500));
         tapePanServo.setDirection(Servo.Direction.REVERSE);
-        tapePanServo.setPosition(tapePanVisionPos);
+
 
         tapeTiltServo = hardwareMap.get(ServoImplEx.class, "tapeTiltServo");
         tapeTiltServo.setPwmRange(new PwmControl.PwmRange(500, 2500));
         tapeTiltServo.scaleRange(tapeTiltMin, tapeTiltMax);
-        tapeTiltServo.setPosition(tapeTiltVisionPos);
+
+        tapeTiltServo.setPosition(tapeTiltNormalPos);
+        tapePanServo.setPosition(tapePanNormalPos);
 
         tapeExtendServo = hardwareMap.get(CRServoImplEx.class, "tapeExtendServo");
         tapeExtendServo.setPwmRange(new PwmControl.PwmRange(500, 2500));
@@ -271,8 +273,6 @@ public class TeleOPV1 extends OpMode {
         if(!matchTimeStarted) {
             matchTime.reset();
             timer.reset();
-            tapeTiltServo.setPosition(tapeTiltNormalPos);
-            tapePanServo.setPosition(tapePanNormalPos);
             matchTimeStarted = true;
         } else {
             double dt = timer.milliseconds();
