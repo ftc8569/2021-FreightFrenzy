@@ -43,8 +43,9 @@ public class TeleOPV1 extends OpMode {
     public final double driveExp = 2; // The power to raise all driving movements to. Specifically
     public final boolean expTranslation = true; //useful for turning but can definitely help with translation as well
 
+    public final double gearRatioRatio = 1.3982683982683982683982683982684;
     public static double intakeSpeed = 1,
-                         intakeOutSpeed = .4,
+                         intakeOutSpeed = 1,
                          duckWheelSpeed = .6,
                          armStartPos = 0 - PoseStorage.armPos,
                          armTopPos = 1070 - PoseStorage.armPos,
@@ -103,7 +104,7 @@ public class TeleOPV1 extends OpMode {
     double driveOffset = 0, duckDirection = 1, capPos = 0;
 
     AnalogInput metalDetector;
-    public boolean rumbling = false, matchTimeStarted = false, capDown = false, hasFreight = false, lastHadFreight = false;
+    public boolean rumbling = false, matchTimeStarted = false, capDown = false, isHeavy = false, lastHeavy = false, lastHadFreight = false;
 
 
     public enum GunningMode {
@@ -705,14 +706,16 @@ public class TeleOPV1 extends OpMode {
 
         sensors: {
             FreightSensor.update();
+            isHeavy = FreightSensor.isHeavy();
             if(armController.getPosition() < 20) {
                 freight = FreightSensor.getFreight() == FreightSensorController.Freight.NONE ? freight : FreightSensor.getFreight();
             }
 
-            if(freight == FreightSensorController.Freight.HEAVYCUBE && !(lastFreight == FreightSensorController.Freight.HEAVYCUBE)) {
+            if(isHeavy && !lastHeavy) {
                 gamepad1.rumble(1.0, 1.0, 300);
                 gamepad2.rumble(1.0, 1.0, 300);
             }
+            lastHeavy = isHeavy;
             lastFreight = freight;
 //            freightDist = freightSensor.getDistance(DistanceUnit.INCH);
 //            freightDists.push(freightDist);
@@ -720,17 +723,11 @@ public class TeleOPV1 extends OpMode {
 
 
             switch (freight) {
-                case HEAVYCUBE:
-                    depositController.hold();
-                    led.setPattern(RevBlinkinLedDriver.BlinkinPattern.RED);
-                    if(!lastHadFreight) {
-                        intakeReverse = true;
-                        lastHadFreight = true;
-                    }
-                    break;
                 case CUBE:
+                    if(isHeavy) {
+                        led.setPattern(RevBlinkinLedDriver.BlinkinPattern.RED);
+                    } else led.setPattern(RevBlinkinLedDriver.BlinkinPattern.ORANGE);
                     depositController.hold();
-                    led.setPattern(RevBlinkinLedDriver.BlinkinPattern.ORANGE);
                     if(!lastHadFreight) {
                         intakeReverse = true;
                         lastHadFreight = true;

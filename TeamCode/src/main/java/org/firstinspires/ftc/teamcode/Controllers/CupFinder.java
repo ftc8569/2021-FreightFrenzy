@@ -58,7 +58,7 @@ public class CupFinder extends OpenCvPipeline
     private Mat outputImageBGR = new Mat();
     private Mat outputImageRBG = new Mat();
     public Rect BoundingRectangle = null;
-    public static int colorErrorTolerance = 50;
+    public static int colorErrorTolerance = 60;
     public static int baseH = 162, baseS = 125, baseV = 150;
     public static int areaThreshold = 1500;
     Scalar base = new Scalar(baseH, baseS, baseV);

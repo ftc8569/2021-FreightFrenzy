@@ -41,7 +41,7 @@ public class DuckWheelController {
     }
 
     public void spinDuckAuto() {
-        spin(0, .8, 2, 2, 1.5);
+        spin(.25, 1, 3, .4, 7);
     }
 
     public void slingDuck() {

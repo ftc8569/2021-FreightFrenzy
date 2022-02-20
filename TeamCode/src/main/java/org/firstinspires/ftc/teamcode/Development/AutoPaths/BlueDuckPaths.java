@@ -71,25 +71,25 @@ public class BlueDuckPaths {
 
         toStorageLeft = drive.trajectorySequenceBuilder(toHubLeft.end())
                 .splineToConstantHeading(new Vector2d(-40, 24), Math.toRadians(-180))
-                .splineToLinearHeading(new Pose2d(-62, 37, Math.toRadians(90)), Math.toRadians(90),
-                        SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL * .75,
-                                DriveConstants.MAX_ANG_VEL * .75, DriveConstants.TRACK_WIDTH),
+                .splineToLinearHeading(new Pose2d(-66, 36.5, Math.toRadians(90)), Math.toRadians(90),
+                        SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL * .5,
+                                DriveConstants.MAX_ANG_VEL * .5, DriveConstants.TRACK_WIDTH),
                         SampleMecanumDrive.getAccelerationConstraint(DriveConstants.MAX_ACCEL * .5))
                 .build();
 
         toStorageCenter = drive.trajectorySequenceBuilder(toHubCenter.end())
                 .splineToConstantHeading(new Vector2d(-40, 24), Math.toRadians(180))
-                .splineToLinearHeading(new Pose2d(-62, 37, Math.toRadians(90)), Math.toRadians(90),
-                        SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL * .75,
-                                DriveConstants.MAX_ANG_VEL * .75, DriveConstants.TRACK_WIDTH),
+                .splineToLinearHeading(new Pose2d(-66, 35.75, Math.toRadians(90)), Math.toRadians(90),
+                        SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL * .5,
+                                DriveConstants.MAX_ANG_VEL * .5, DriveConstants.TRACK_WIDTH),
                         SampleMecanumDrive.getAccelerationConstraint(DriveConstants.MAX_ACCEL * .5))
                 .build();
 
         toStorageRight = drive.trajectorySequenceBuilder(toHubRight.end())
                 .splineToConstantHeading(new Vector2d(-40, 24), Math.toRadians(180))
-                .splineToLinearHeading(new Pose2d(-62, 37, Math.toRadians(90)), Math.toRadians(90),
-                        SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL * .75,
-                                DriveConstants.MAX_ANG_VEL * .75, DriveConstants.TRACK_WIDTH),
+                .splineToLinearHeading(new Pose2d(-66, 36.25, Math.toRadians(90)), Math.toRadians(90),
+                        SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL * .5,
+                                DriveConstants.MAX_ANG_VEL * .5, DriveConstants.TRACK_WIDTH),
                         SampleMecanumDrive.getAccelerationConstraint(DriveConstants.MAX_ACCEL * .5))
                 .build();
 

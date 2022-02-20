@@ -409,7 +409,6 @@ public class MainAutoV1 extends TeleOPV1 {
                                 }
 
                                 if (!drive.isBusy()) {
-                                    depositController.hold();
                                     drive.cancel();
                                     blueWarehousePaths.setPath(BlueWarehousePaths.Paths.toHub2);
 //                                    blueWarehousePaths.generateToHub2();
@@ -449,7 +448,6 @@ public class MainAutoV1 extends TeleOPV1 {
                                 }
 
                                 if (!drive.isBusy()) {
-                                    depositController.hold();
                                     drive.cancel();
                                     blueWarehousePaths.setPath(BlueWarehousePaths.Paths.toHub3);
 //                                    blueWarehousePaths.generateToHub3();

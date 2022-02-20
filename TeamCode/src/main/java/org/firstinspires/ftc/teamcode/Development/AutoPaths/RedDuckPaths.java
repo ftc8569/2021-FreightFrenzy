@@ -34,13 +34,13 @@ public class RedDuckPaths {
         this.drive = drive;
 
         toDuck = drive.trajectorySequenceBuilder(startingPose)
-                .splineToConstantHeading(new Vector2d(-65, -48), Math.toRadians(180))
-                .lineToConstantHeading(new Vector2d(-65, -56.5), SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL*.5, DriveConstants.MAX_ANG_VEL*.5, DriveConstants.TRACK_WIDTH),
+                .splineToLinearHeading(new Pose2d(-64, -48, 0), Math.toRadians(-90))
+                .lineToConstantHeading(new Vector2d(-64, -59.5), SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL*.5, DriveConstants.MAX_ANG_VEL*.5, DriveConstants.TRACK_WIDTH),
                         SampleMecanumDrive.getAccelerationConstraint(DriveConstants.MAX_ACCEL*.25))
                 .build();
 
         toHubLeft = drive.trajectorySequenceBuilder(toDuck.end())
-                .addDisplacementMarker(.1, 0, () -> TeleOPV1.armController.setPosition((int) MainAutoV1.armBottomPos))
+                .addTemporalMarker(.6, 0, () -> TeleOPV1.armController.setPosition((int) MainAutoV1.armBottomPos))
                 .lineToConstantHeading(new Vector2d(-65, -24))
                 .splineToLinearHeading(new Pose2d(-42.5, -24, Math.toRadians(180)), Math.toRadians(0),
                         SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL * .5,
@@ -50,7 +50,7 @@ public class RedDuckPaths {
 
 
         toHubCenter = drive.trajectorySequenceBuilder(toDuck.end())
-                .addDisplacementMarker(.2, 0, () -> TeleOPV1.armController.setPosition((int) MainAutoV1.armMiddlePos))
+                .addTemporalMarker(2, () -> TeleOPV1.armController.setPosition((int) MainAutoV1.armMiddlePos))
                 .lineToConstantHeading(new Vector2d(-65, -24))
                 .splineToLinearHeading(new Pose2d(-39, -24, Math.toRadians(180)), Math.toRadians(0),
                         SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL * .5,
@@ -59,9 +59,9 @@ public class RedDuckPaths {
                 .build();
 
         toHubRight = drive.trajectorySequenceBuilder(toDuck.end())
-                .addDisplacementMarker(.2, 0, () -> TeleOPV1.armController.setPosition((int) MainAutoV1.armTopPos))
+                .addTemporalMarker(2, () -> TeleOPV1.armController.setPosition((int) MainAutoV1.armTopPos))
                 .lineToConstantHeading(new Vector2d(-65, -24))
-                .splineToLinearHeading(new Pose2d(-30.5, -24, Math.toRadians(180)), Math.toRadians(0),
+                .splineToLinearHeading(new Pose2d(-32.5, -24, Math.toRadians(180)), Math.toRadians(0),
                         SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL * .5,
                                 DriveConstants.MAX_ANG_VEL * .5, DriveConstants.TRACK_WIDTH),
                         SampleMecanumDrive.getAccelerationConstraint(DriveConstants.MAX_ACCEL * .25))
@@ -70,7 +70,7 @@ public class RedDuckPaths {
 
         toStorageLeft = drive.trajectorySequenceBuilder(toHubLeft.end())
                 .splineToConstantHeading(new Vector2d(-40, -24), Math.toRadians(180))
-                .splineToLinearHeading(new Pose2d(-62, -37, Math.toRadians(-90)), Math.toRadians(-90),
+                .splineToLinearHeading(new Pose2d(-62, -35.25, Math.toRadians(-90)), Math.toRadians(-90),
                         SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL * .75,
                                 DriveConstants.MAX_ANG_VEL * .75, DriveConstants.TRACK_WIDTH),
                         SampleMecanumDrive.getAccelerationConstraint(DriveConstants.MAX_ACCEL * .5))
@@ -78,7 +78,7 @@ public class RedDuckPaths {
 
         toStorageCenter = drive.trajectorySequenceBuilder(toHubCenter.end())
                 .splineToConstantHeading(new Vector2d(-40, -24), Math.toRadians(180))
-                .splineToLinearHeading(new Pose2d(-62, -37, Math.toRadians(-90)), Math.toRadians(-90),
+                .splineToLinearHeading(new Pose2d(-62, -35.5, Math.toRadians(-90)), Math.toRadians(-90),
                         SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL * .75,
                                 DriveConstants.MAX_ANG_VEL * .75, DriveConstants.TRACK_WIDTH),
                         SampleMecanumDrive.getAccelerationConstraint(DriveConstants.MAX_ACCEL * .5))
@@ -86,7 +86,7 @@ public class RedDuckPaths {
 
         toStorageRight = drive.trajectorySequenceBuilder(toHubRight.end())
                 .splineToConstantHeading(new Vector2d(-40, -24), Math.toRadians(180))
-                .splineToLinearHeading(new Pose2d(-62, -37, Math.toRadians(-90)), Math.toRadians(-90),
+                .splineToLinearHeading(new Pose2d(-62, -36, Math.toRadians(-90)), Math.toRadians(-90),
                         SampleMecanumDrive.getVelocityConstraint(DriveConstants.MAX_VEL * .75,
                                 DriveConstants.MAX_ANG_VEL * .75, DriveConstants.TRACK_WIDTH),
                         SampleMecanumDrive.getAccelerationConstraint(DriveConstants.MAX_ACCEL * .5))

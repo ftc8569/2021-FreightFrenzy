@@ -13,15 +13,14 @@ public class FreightSensorController {
 
     public boolean hasMetal = false;
 
-    public boolean hasFreight = false, lastHadFreight = false;
+    public boolean hasFreight = false, lastHadFreight = false, heavyFreight = false;
 
     public Freight freight = Freight.NONE;
 
     public enum Freight {
         NONE,
         BALL,
-        CUBE,
-        HEAVYCUBE
+        CUBE
     }
 
     public FreightSensorController(RevColorSensorV3 sensor, AnalogInput metalDetector) {
@@ -47,8 +46,7 @@ public class FreightSensorController {
         } else freight = Freight.NONE;
 
         if(hasMetal) {
-            hasFreight = true;
-            freight = Freight.HEAVYCUBE;
+            heavyFreight = true;
         }
 
         lastHadFreight = hasFreight;
@@ -68,5 +66,9 @@ public class FreightSensorController {
 
     public double getSum() {
         return red + green + blue + alpha;
+    }
+
+    public boolean isHeavy() {
+        return heavyFreight;
     }
 }

@@ -13,7 +13,7 @@ public class ArmHardware2021 extends ArmHardware{
     public static PIDFCoefficients veloPID = new PIDFCoefficients(9, 0, 0,14 ), //we might do some custom pid here later
                              positionPID = new PIDFCoefficients(10, 0, 0, 0);
 
-    public static int targetPosTolerance = 30;
+    public static int targetPosTolerance = 5;
 
     @Override
     public void init(HardwareMap hw, DcMotor.RunMode mode) {
