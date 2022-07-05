@@ -1,12 +1,14 @@
 package org.firstinspires.ftc.teamcode.Controllers;
 
+import com.acmerobotics.dashboard.config.Config;
 import com.qualcomm.robotcore.hardware.Servo;
 
+@Config
 public class DepositController {
     public static double kickerStartPos = 0,
             kickerHoldPos = .12,
             kickerKickPos = .5,
-            armServoShutPos = 0.08,
+            armServoShutPos = 0.09,
             armServoOpenPos = .2;
     Servo doorServo, kickerServo;
 

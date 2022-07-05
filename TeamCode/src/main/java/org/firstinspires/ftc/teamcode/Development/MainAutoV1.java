@@ -282,7 +282,6 @@ public class MainAutoV1 extends TeleOPV1 {
 
                                 if (!drive.isBusy()) {
                                     drive.cancel();
-                                    depositController.hold();
                                     redWarehousePaths.setPath(RedWarehousePaths.Paths.toHub2);
 //                                    redWarehousePaths.generateToHub2();
                                     drive.followTrajectorySequenceAsync(redWarehousePaths.toHub2);
@@ -322,7 +321,6 @@ public class MainAutoV1 extends TeleOPV1 {
                                 }
 
                                 if (!drive.isBusy()) {
-                                    depositController.hold();
                                     drive.cancel();
                                     redWarehousePaths.setPath(RedWarehousePaths.Paths.toHub3);
 //                                    redWarehousePaths.generateToHub3();

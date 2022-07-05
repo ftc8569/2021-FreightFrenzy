@@ -7,6 +7,7 @@ public class PoseStorage {
     public enum Alliance {
         RED, BLUE, NEITHER
     }
+
     public enum StartingPosition {
         WAREHOUSE, DUCK, NOT_SET
     }

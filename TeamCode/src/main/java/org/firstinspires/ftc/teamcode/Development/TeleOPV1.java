@@ -48,12 +48,12 @@ public class TeleOPV1 extends OpMode {
                          intakeOutSpeed = .7,
                          duckWheelSpeed = .6,
                          armStartPos = 0 - PoseStorage.armPos,
-                         armTopPos = 1350 - PoseStorage.armPos,
+                         armTopPos = 1500 - PoseStorage.armPos,
                          armMiddlePos = 1804 - PoseStorage.armPos,
                          armBottomPos = 2260 - PoseStorage.armPos,
                          armConveyorPos =
 //                                 403 - PoseStorage.armPos, // temporary
-                                 410 - PoseStorage.armPos, // with new bucket
+                                 510 - PoseStorage.armPos, // with new bucket
                          armCapUpPos = 1070 - PoseStorage.armPos,
                          armCapDownPos = 1816 - PoseStorage.armPos,
                          capUpPos = .601,
@@ -64,17 +64,19 @@ public class TeleOPV1 extends OpMode {
                          fastDrivingSpeed = .9,
                          slowedDrivingSpeed = .5,
                          tiltpanMaxRange = 101,
-                         tapePanVisionPos = .97,
-                         tapeTiltMin = .3,
-                         tapeTiltMax = .5+ 35/tiltpanMaxRange,
-                         tapeTiltVisionPos = 0,
-                         tapeTiltNormalPos = .4,
-                         tapePanNormalPos = tapePanVisionPos;
+                         tapePanVisionPos = .745,
+                         tapeTiltMin = 0,
+                         tapeTiltMax = 1,
+                         tapeTiltVisionPos = .435,
+                         tapeTiltNormalPos = .602,
+                         tapePanNormalPos = tapePanVisionPos,
+                         panSensitivity = 1/15.0,
+                         tiltSensitivity = 1/10.0;
 
     public final PIDFCoefficients headingControllerCoefficients = new PIDFCoefficients(.012, 0.005, 0.001, 0);
 
     //testing this
-    public final double outputFilter = 0, outputRamp = 0;
+    public final double outputFilter = 0, outputRamp = 0, sqrt2over2 = Math.sqrt(2)/2;
 
     public final DcMotor.RunMode armMode = DcMotor.RunMode.RUN_TO_POSITION;
 
@@ -155,7 +157,7 @@ public class TeleOPV1 extends OpMode {
 
     CRServoImplEx tapeExtendServo;
 
-    double tapeTilt = tapeTiltVisionPos, tapePan = tapePanVisionPos;
+    double tapeTilt = tapeTiltNormalPos, tapePan = tapePanNormalPos;
 
     ConveyorController conveyorController;
 
@@ -253,10 +255,9 @@ public class TeleOPV1 extends OpMode {
 
         tapeTiltServo = hardwareMap.get(ServoImplEx.class, "tapeTiltServo");
         tapeTiltServo.setPwmRange(new PwmControl.PwmRange(500, 2500));
-        tapeTiltServo.scaleRange(tapeTiltMin, tapeTiltMax);
 
-        tapeTiltServo.setPosition(tapeTiltNormalPos);
-        tapePanServo.setPosition(tapePanNormalPos);
+        tapeTiltServo.setPosition(tapeTilt);
+        tapePanServo.setPosition(tapePan);
 
         tapeExtendServo = hardwareMap.get(CRServoImplEx.class, "tapeExtendServo");
         tapeExtendServo.setPwmRange(new PwmControl.PwmRange(500, 2500));
@@ -341,11 +342,19 @@ public class TeleOPV1 extends OpMode {
                     } else {
                         depositController.set(!depositController.getOut());
                         if(armController.getSetPosition() == armConveyorPos) {
-                            conveyorController.spin((pose.getHeading() < 0));
+                            double headingX = Math.cos(pose.getHeading()), headingY = Math.sin(pose.getHeading());
+                            if(Math.abs(headingY) > sqrt2over2) {
+                                if(headingY > 0) {
+                                    conveyorController.spin(PoseStorage.alliance == PoseStorage.Alliance.RED);
+                                } else conveyorController.spin(PoseStorage.alliance != PoseStorage.Alliance.RED);
+                            } else {
+                                conveyorController.spin(headingX < 0);
+                            }
                             doorTimer.reset();
                             doorShutted = false;
                         }
                     }
+
 
                 }
 
@@ -512,6 +521,8 @@ public class TeleOPV1 extends OpMode {
 //                            armMode = DcMotor.RunMode.RUN_TO_POSITION;
 //                            armController.setMode(DcMotor.RunMode.RUN_TO_POSITION);
 //                        }
+
+
                         armTimer.reset();
                         armController.setPower(ArmController.armSetPosPower);
                         if(gamepad2.dpad_up) {
@@ -638,18 +649,48 @@ public class TeleOPV1 extends OpMode {
                 } else tapeExtendServo.setPower(0);
 
                 if(Math.abs(gamepad2.left_stick_y) > .05) {
-                    if(Math.abs(tapeTilt - gamepad2.left_stick_y/10) < 1)
+                    double nextTilt = tapeTilt - Math.signum(gamepad2.left_stick_y)*Math.pow(gamepad2.left_stick_y, 2)*tiltSensitivity;
+                    if( nextTilt < tapeTiltMax && nextTilt > tapeTiltMin)
                     {
-                        tapeTilt -= gamepad2.left_stick_y/10;
+                        tapeTilt = nextTilt;
                         tapeTiltServo.setPosition(tapeTilt);
                     }
                 }
                 if(Math.abs(gamepad2.left_stick_x) > .05) {
-                   if(Math.abs(tapePan + gamepad2.left_stick_x/20) < 1){
-                       tapePan += gamepad2.left_stick_x/30;
+                    double nextPan = tapePan + Math.signum(gamepad2.left_stick_x)*Math.pow(gamepad2.left_stick_x, 2)*panSensitivity;
+                   if(nextPan < 1 && nextPan > 0){
+                       tapePan = nextPan;
                        tapePanServo.setPosition(tapePan);
                    }
                 }
+
+                if(gamepad2.right_stick_x > .75) {
+                    tapePan = 1;
+                    tapePanServo.setPosition(tapePan);
+                }
+                if(gamepad2.right_stick_x < -.75) {
+                    tapePan = 0;
+                    tapePanServo.setPosition(tapePan);
+                }
+                if(gamepad2.right_stick_y > .75) {
+                    tapeTilt = tapeTiltMin;
+                    tapeTiltServo.setPosition(tapeTilt);
+                }
+                if(gamepad2.right_stick_y < -.75) {
+                    tapeTilt = tapeTiltMax;
+                    tapeTiltServo.setPosition(tapeTilt);
+                }
+
+                if(gamepad2.right_stick_button) {
+                    tapeTilt = tapeTiltNormalPos;
+                    tapeTiltServo.setPosition(tapeTilt);
+
+                    tapePan = tapePanNormalPos;
+                    tapePanServo.setPosition(tapePanNormalPos);
+                }
+
+
+
 
 
                 telemetry.addData("tiltPos", tapeTilt);
