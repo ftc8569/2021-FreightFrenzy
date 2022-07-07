@@ -1,6 +1,6 @@
 package org.firstinspires.ftc.teamcode.Development;
 
-import com.acmerobotics.dashboard.config.Config;
+//import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.roadrunner.geometry.Pose2d;
 import com.acmerobotics.roadrunner.geometry.Vector2d;
 import com.qualcomm.hardware.rev.Rev2mDistanceSensor;
@@ -35,7 +35,7 @@ import org.firstinspires.ftc.teamcode.roadrunner.trajectorysequence.TrajectorySe
 import java.util.Arrays;
 import java.util.HashMap;
 
-@Config
+//@Config
 @TeleOp(name = "TeleOPV1", group = "Development")
 
 public class TeleOPV1 extends OpMode {
@@ -159,7 +159,7 @@ public class TeleOPV1 extends OpMode {
 
     double tapeTilt = tapeTiltNormalPos, tapePan = tapePanNormalPos;
 
-    ConveyorController conveyorController;
+    public static ConveyorController conveyorController;
 
     public static DepositController depositController;
 
@@ -316,6 +316,10 @@ public class TeleOPV1 extends OpMode {
             }
         }
 
+        double headingX = Math.cos(pose.getHeading()), headingY = Math.sin(pose.getHeading());
+
+        telemetry.addData("Heading X:", headingX);
+        telemetry.addData("Heading Y:", headingY);
         controls: {
 
             driver: {
@@ -342,13 +346,12 @@ public class TeleOPV1 extends OpMode {
                     } else {
                         depositController.set(!depositController.getOut());
                         if(armController.getSetPosition() == armConveyorPos) {
-                            double headingX = Math.cos(pose.getHeading()), headingY = Math.sin(pose.getHeading());
-                            if(Math.abs(headingY) > sqrt2over2) {
-                                if(headingY > 0) {
-                                    conveyorController.spin(PoseStorage.alliance == PoseStorage.Alliance.RED);
-                                } else conveyorController.spin(PoseStorage.alliance != PoseStorage.Alliance.RED);
+                            if(Math.abs(headingX) > sqrt2over2) {
+                                if(headingX > 0) {
+                                    conveyorController.spin(PoseStorage.alliance != PoseStorage.Alliance.RED);
+                                } else conveyorController.spin(PoseStorage.alliance == PoseStorage.Alliance.RED);
                             } else {
-                                conveyorController.spin(headingX < 0);
+                                conveyorController.spin(headingY < 0);
                             }
                             doorTimer.reset();
                             doorShutted = false;

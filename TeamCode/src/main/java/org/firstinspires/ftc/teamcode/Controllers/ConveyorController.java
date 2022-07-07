@@ -1,10 +1,10 @@
 package org.firstinspires.ftc.teamcode.Controllers;
 
-import com.acmerobotics.dashboard.config.Config;
+//import com.acmerobotics.dashboard.config.Config;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
-@Config
+//@Config
 public class ConveyorController {
 
     public static double spinTime = 2;
@@ -29,5 +29,9 @@ public class ConveyorController {
         timer.reset();
 
         direction = reversed ? -1 : 1;
+    }
+
+    public boolean isBusy() {
+        return timer.seconds() < spinTime;
     }
 }

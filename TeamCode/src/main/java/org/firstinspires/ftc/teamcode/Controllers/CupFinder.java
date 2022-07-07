@@ -3,8 +3,8 @@ package org.firstinspires.ftc.teamcode.Controllers;
 
         import android.os.Environment;
 
-        import com.acmerobotics.dashboard.FtcDashboard;
-        import com.acmerobotics.dashboard.config.Config;
+//        import com.acmerobotics.dashboard.FtcDashboard;
+//        import com.acmerobotics.dashboard.config.Config;
 
         import org.firstinspires.ftc.teamcode.Development.PoseStorage;
         import org.jetbrains.annotations.NotNull;
@@ -40,7 +40,7 @@ package org.firstinspires.ftc.teamcode.Controllers;
  * if you're doing something weird where you do need it synchronized with your OpMode thread,
  * then you will need to account for that accordingly.
  */
-@Config
+//@Config
 public class CupFinder extends OpenCvPipeline
 {
     public CupFinder(@NotNull OpenCvCamera webcamToUse)
@@ -49,7 +49,7 @@ public class CupFinder extends OpenCvPipeline
         webcam = webcamToUse;
     }
 
-    private FtcDashboard dashboard;
+//    private FtcDashboard dashboard;
     private OpenCvCamera webcam;
     private Mat inputImageBGR = new Mat();
     private Mat hsvImage = new Mat();

@@ -1,12 +1,12 @@
 package org.firstinspires.ftc.teamcode.Controllers;
 
-import com.acmerobotics.dashboard.config.Config;
+//import com.acmerobotics.dashboard.config.Config;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 
-@Config
+//@Config
 public class ArmHardware2021 extends ArmHardware{
 
     private DcMotorEx armMotor;

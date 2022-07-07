@@ -1,9 +1,9 @@
 package org.firstinspires.ftc.teamcode.Controllers;
 
-import com.acmerobotics.dashboard.config.Config;
+//import com.acmerobotics.dashboard.config.Config;
 import com.qualcomm.robotcore.hardware.Servo;
 
-@Config
+//@Config
 public class DepositController {
     public static double kickerStartPos = 0,
             kickerHoldPos = .12,

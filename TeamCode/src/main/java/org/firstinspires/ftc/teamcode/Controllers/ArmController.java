@@ -1,11 +1,11 @@
 package org.firstinspires.ftc.teamcode.Controllers;
 
-import com.acmerobotics.dashboard.config.Config;
+//import com.acmerobotics.dashboard.config.Config;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 
-@Config
+//@Config
 public class ArmController {
     private HardwareMap hardwareMap;
     private ArmHardware hardware;

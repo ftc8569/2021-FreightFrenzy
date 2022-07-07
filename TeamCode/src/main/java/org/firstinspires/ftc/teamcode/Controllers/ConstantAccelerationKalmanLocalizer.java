@@ -3,7 +3,7 @@ package org.firstinspires.ftc.teamcode.Controllers;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.acmerobotics.dashboard.config.Config;
+//import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.roadrunner.drive.MecanumDrive;
 import com.acmerobotics.roadrunner.geometry.Pose2d;
 import com.acmerobotics.roadrunner.localization.Localizer;
@@ -23,7 +23,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.Arrays;
 import java.util.HashMap;
 
-@Config
+//@Config
 public class ConstantAccelerationKalmanLocalizer implements Localizer {
     public static double processUncertainty = 20;
 

@@ -4,9 +4,9 @@ import android.annotation.SuppressLint;
 
 import androidx.annotation.NonNull;
 
-import com.acmerobotics.dashboard.FtcDashboard;
-import com.acmerobotics.dashboard.config.Config;
-import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
+//import com.acmerobotics.dashboard.FtcDashboard;
+//import com.acmerobotics.dashboard.config.Config;
+//import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.acmerobotics.roadrunner.control.PIDCoefficients;
 import com.acmerobotics.roadrunner.drive.DriveSignal;
 import com.acmerobotics.roadrunner.drive.MecanumDrive;
@@ -68,7 +68,7 @@ import static org.firstinspires.ftc.teamcode.roadrunner.drive.DriveConstants.kV;
 /*
  * Simple mecanum drive hardware implementation for REV hardware.
  */
-@Config
+//@Config
 public class SampleMecanumDrive extends MecanumDrive {
     public static PIDCoefficients TRANSLATIONAL_PID = new PIDCoefficients(9, 0, 0);
     public static PIDCoefficients HEADING_PID = new PIDCoefficients(9, 0, 0);
@@ -104,9 +104,9 @@ public class SampleMecanumDrive extends MecanumDrive {
 
     private boolean lastHeadingSet, lastHeadingVeloSet;
 
-    FtcDashboard dashboard;
+//    FtcDashboard dashboard;
 
-    TelemetryPacket packet = new TelemetryPacket();
+//    TelemetryPacket packet = new TelemetryPacket();
 
     TwoWheelTrackingLocalizer odolocalizer;
     MecanumLocalizer wheelLocalizer;
@@ -118,7 +118,7 @@ public class SampleMecanumDrive extends MecanumDrive {
     public SampleMecanumDrive(HardwareMap hardwareMap) {
         super(kV, kA, kStatic, TRACK_WIDTH, TRACK_WIDTH, LATERAL_MULTIPLIER);
 
-        dashboard = FtcDashboard.getInstance();
+//        dashboard = FtcDashboard.getInstance();
 
         follower = new HolonomicPIDVAFollower(TRANSLATIONAL_PID, TRANSLATIONAL_PID, HEADING_PID,
                 new Pose2d(FOLLOWER_POSITION_TOLERANCE, FOLLOWER_POSITION_TOLERANCE, FOLLOWER_HEADING_TOLERANCE), FOLLOWER_TIMEOUT);
@@ -276,15 +276,15 @@ public class SampleMecanumDrive extends MecanumDrive {
 //        packet.put("Filtered Heading", filteredHeading);
 //        packet.put("Original Velo", headingVeloAvg);
 //        packet.put("Filtered Velo", filteredVelo);
-        packet.put("externalHeading", Math.toDegrees(Angle.normDelta(getExternalHeading())));
-        packet.put("wheel positions", String.format("Parallel %.2f, Perpendicular %.2f", odolocalizer.getWheelPositions().get(0), odolocalizer.getWheelPositions().get(1)));
-        packet.put("Distances FBLR", Arrays.toString(localizer.getDistances()));
-        packet.put("Best Estimate", localizer.getPoseEstimate());
-        packet.put("Distance Sesnor Estimate", localizer.getDistEstimate());
-        packet.put("Mecanum Localizer Estimate", localizer.getWheelEstimate());
-        packet.put("Odometry Localizer Estimate", localizer.getOdoEstimate());
+//        packet.put("externalHeading", Math.toDegrees(Angle.normDelta(getExternalHeading())));
+//        packet.put("wheel positions", String.format("Parallel %.2f, Perpendicular %.2f", odolocalizer.getWheelPositions().get(0), odolocalizer.getWheelPositions().get(1)));
+//        packet.put("Distances FBLR", Arrays.toString(localizer.getDistances()));
+//        packet.put("Best Estimate", localizer.getPoseEstimate());
+//        packet.put("Distance Sesnor Estimate", localizer.getDistEstimate());
+//        packet.put("Mecanum Localizer Estimate", localizer.getWheelEstimate());
+//        packet.put("Odometry Localizer Estimate", localizer.getOdoEstimate());
 
-        dashboard.sendTelemetryPacket(packet);
+//        dashboard.sendTelemetryPacket(packet);
     }
 
     public void waitForIdle() {
@@ -451,7 +451,7 @@ public class SampleMecanumDrive extends MecanumDrive {
     }
 
     public void addTelemetry(@NotNull Map<String, Object> map) {
-        this.packet.putAll(map);
+//        this.packet.putAll(map);
     }
 
 

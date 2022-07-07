@@ -1,6 +1,6 @@
 package org.firstinspires.ftc.teamcode.Controllers;
 
-import com.acmerobotics.dashboard.config.Config;
+//import com.acmerobotics.dashboard.config.Config;
 import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.DigitalChannel;
 import com.qualcomm.robotcore.hardware.DigitalChannelImpl;
@@ -11,7 +11,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.teamcode.Development.PoseStorage;
 
-@Config
+//@Config
 public class MaxBoticsArray {
     private MaxBoticsMB1040 frontSensor, backSensor, leftSensor, rightSensor;
     private DigitalChannelImpl startPin;

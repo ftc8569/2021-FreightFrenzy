@@ -9,7 +9,7 @@ public class PoseStorage {
     }
 
     public enum StartingPosition {
-        WAREHOUSE, DUCK, NOT_SET
+        WAREHOUSE, DUCK, NEW_DUCK, NOT_SET
     }
 
     public static Alliance alliance = Alliance.NEITHER;

@@ -4,6 +4,12 @@ import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 
 @Autonomous(preselectTeleOp = "TeleOPV1")
 public class RedWarehouseAuto extends MainAutoV1{
+    @Override
+    public void init() {
+        initRed = true;
+        initBlue = false;
+        super.init();
+    }
 
     @Override
     Position findPosition() {

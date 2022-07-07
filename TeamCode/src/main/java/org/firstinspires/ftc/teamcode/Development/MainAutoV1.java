@@ -1,12 +1,6 @@
 package org.firstinspires.ftc.teamcode.Development;
 
-import android.graphics.BlendMode;
-import android.icu.text.Transliterator;
-
-import com.acmerobotics.dashboard.FtcDashboard;
-import com.acmerobotics.roadrunner.geometry.Pose2d;
-import com.acmerobotics.roadrunner.geometry.Vector2d;
-import com.acmerobotics.roadrunner.trajectory.Trajectory;
+//import com.acmerobotics.dashboard.FtcDashboard;
 import com.qualcomm.hardware.rev.RevBlinkinLedDriver;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -14,21 +8,18 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.teamcode.Controllers.ArmController;
-import org.firstinspires.ftc.teamcode.Controllers.ArmHardware2021;
 import org.firstinspires.ftc.teamcode.Controllers.CupFinder;
 import org.firstinspires.ftc.teamcode.Controllers.FreightSensorController;
 import org.firstinspires.ftc.teamcode.Development.AutoPaths.BlueDuckPaths;
+import org.firstinspires.ftc.teamcode.Development.AutoPaths.BlueNewDuckPaths;
 import org.firstinspires.ftc.teamcode.Development.AutoPaths.BlueWarehousePaths;
 import org.firstinspires.ftc.teamcode.Development.AutoPaths.RedDuckPaths;
+import org.firstinspires.ftc.teamcode.Development.AutoPaths.RedNewDuckPaths;
 import org.firstinspires.ftc.teamcode.Development.AutoPaths.RedWarehousePaths;
-import org.firstinspires.ftc.teamcode.roadrunner.drive.DriveConstants;
-import org.firstinspires.ftc.teamcode.roadrunner.drive.SampleMecanumDrive;
 import org.openftc.easyopencv.OpenCvCamera;
 import org.openftc.easyopencv.OpenCvCameraFactory;
 import org.openftc.easyopencv.OpenCvCameraRotation;
 import org.openftc.easyopencv.OpenCvWebcam;
-
-import java.util.HashMap;
 
 import static org.firstinspires.ftc.teamcode.Development.PoseStorage.Alliance.BLUE;
 
@@ -45,7 +36,11 @@ public class MainAutoV1 extends TeleOPV1 {
 
     BlueDuckPaths blueDuckPaths;
 
-    ElapsedTime deliveryTimer = new ElapsedTime();
+    BlueNewDuckPaths blueNewDuckPaths;
+
+    RedNewDuckPaths redNewDuckPaths;
+
+    ElapsedTime deliveryTimer = new ElapsedTime(), waitTimer = new ElapsedTime();
 
     public boolean webcamStreaming = false;
 
@@ -65,6 +60,9 @@ public class MainAutoV1 extends TeleOPV1 {
 
     boolean cameraSet = false;
 
+    boolean pathsCreated = false;
+
+    boolean initRed = true, initBlue = true;
 
     @Override
     public void init() {
@@ -90,7 +88,7 @@ public class MainAutoV1 extends TeleOPV1 {
             pipeline.pipelineStageToDisplay = CupFinder.PipelineStages.OUTPUTWITHBOUNDINGRECT;
             webcam.setPipeline(pipeline);
 
-            FtcDashboard.getInstance().startCameraStream(webcam, 10);
+//            FtcDashboard.getInstance().startCameraStream(webcam, 10);
 
 
             // We set the viewport policy to optimized view so the preview doesn't appear 90 deg
@@ -117,13 +115,7 @@ public class MainAutoV1 extends TeleOPV1 {
         armController.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         armController.setPower(ArmController.armSetPosPower);
 
-        paths:
-        {
-            redWarehousePaths = new RedWarehousePaths(drive);
-            redDuckPaths = new RedDuckPaths(drive);
-            blueDuckPaths = new BlueDuckPaths(drive);
-            blueWarehousePaths = new BlueWarehousePaths(drive);
-        }
+
 
         tapePanServo.setPosition(tapePanVisionPos);
         tapeTiltServo.setPosition(tapeTiltVisionPos);
@@ -136,6 +128,30 @@ public class MainAutoV1 extends TeleOPV1 {
 
     @Override
     public void init_loop() {
+
+        paths:
+        {
+            if(!pathsCreated) {
+                if(initRed) {
+                    redWarehousePaths = new RedWarehousePaths(drive);
+                    redDuckPaths = new RedDuckPaths(drive);
+
+                    redNewDuckPaths = new RedNewDuckPaths(drive);
+                    redNewDuckPaths.init();
+                }
+
+                if(initBlue) {
+                    blueDuckPaths = new BlueDuckPaths(drive);
+                    blueWarehousePaths = new BlueWarehousePaths(drive);
+                    blueNewDuckPaths = new BlueNewDuckPaths(drive);
+                    blueNewDuckPaths.init();
+                }
+
+
+                pathsCreated = true;
+            }
+
+        }
 
         drive.update();
         Position pos = findPosition();
@@ -187,7 +203,7 @@ public class MainAutoV1 extends TeleOPV1 {
         if (webcamStreaming) {
             webcam.closeCameraDeviceAsync(() -> {
             });
-            FtcDashboard.getInstance().stopCameraStream();
+//            FtcDashboard.getInstance().stopCameraStream();
             webcamStreaming = false;
             led.setPattern(RevBlinkinLedDriver.BlinkinPattern.HOT_PINK);
         }
@@ -203,7 +219,6 @@ public class MainAutoV1 extends TeleOPV1 {
         telemetry.addData("pose", drive.getPoseEstimate().toString());
         telemetry.addData("freightRGBA", "%s, %s, %s, %s", FreightSensor.red, FreightSensor.green, FreightSensor.blue, FreightSensor.alpha);
         telemetry.addData("combined Freight", FreightSensor.getSum());
-        telemetry.addData("Current Path", redWarehousePaths.getPath().toString());
 
         PoseStorage.endPose = drive.getPoseEstimate();
         PoseStorage.armPos = armController.getPosition();
@@ -574,36 +589,23 @@ public class MainAutoV1 extends TeleOPV1 {
                         switch (blueDuckPaths.path) {
                             case start: {
                                 drive.setPoseEstimate(blueDuckPaths.startingPose);
-                                drive.followTrajectorySequenceAsync(blueDuckPaths.toDuck);
-                                blueDuckPaths.setPath(BlueDuckPaths.Paths.toDuck);
-                                break;
-                            }
-                            case toDuck: {
-                                if (!drive.isBusy()) {
-                                    blueDuckPaths.setPath(BlueDuckPaths.Paths.spinningDuck);
-                                    duck.spinDuckAuto();
-                                }
-                                break;
-                            }
-                            case spinningDuck: {
-                                if (!duck.isBusy()) {
-                                    switch (position) {
-                                        case LEFT: {
-                                            drive.followTrajectorySequenceAsync(blueDuckPaths.toHubLeft);
-                                            break;
-                                        }
-                                        case CENTER: {
-                                            drive.followTrajectorySequenceAsync(blueDuckPaths.toHubCenter);
-                                            break;
-                                        }
-                                        default:
-                                        case RIGHT: {
-                                            drive.followTrajectorySequenceAsync(blueDuckPaths.toHubRight);
-                                            break;
-                                        }
+                                switch (position) {
+                                    case LEFT: {
+                                        drive.followTrajectorySequenceAsync(blueDuckPaths.toHubLeft);
+                                        break;
                                     }
-                                    blueDuckPaths.setPath(BlueDuckPaths.Paths.toHub);
+                                    case CENTER: {
+                                        drive.followTrajectorySequenceAsync(blueDuckPaths.toHubCenter);
+                                        break;
+                                    }
+                                    default:
+                                    case RIGHT: {
+                                        drive.followTrajectorySequenceAsync(blueDuckPaths.toHubRight);
+                                        break;
+                                    }
                                 }
+                                blueDuckPaths.setPath(BlueDuckPaths.Paths.toHub);
+
                                 break;
                             }
                             case toHub: {
@@ -616,34 +618,215 @@ public class MainAutoV1 extends TeleOPV1 {
                             }
                             case delivering: {
                                 if (deliveryTimer.seconds() > .75) {
-                                    blueDuckPaths.setPath(BlueDuckPaths.Paths.toStorage);
+                                    blueDuckPaths.setPath(BlueDuckPaths.Paths.toWait);
                                     depositController.set(false);
                                     armController.setPosition((int) armStartPos);
                                     switch (position) {
                                         case LEFT:
-                                            drive.followTrajectorySequenceAsync(blueDuckPaths.toStorageLeft);
+                                            drive.followTrajectorySequenceAsync(blueDuckPaths.toWaitLeft);
                                             break;
 
                                         case CENTER:
-                                            drive.followTrajectorySequenceAsync(blueDuckPaths.toStorageCenter);
+                                            drive.followTrajectorySequenceAsync(blueDuckPaths.toWaitCenter);
                                             break;
 
                                         default:
                                         case RIGHT:
-                                            drive.followTrajectorySequenceAsync(blueDuckPaths.toStorageRight);
+                                            drive.followTrajectorySequenceAsync(blueDuckPaths.toWaitRight);
                                             break;
                                     }
                                 }
                                 break;
                             }
-                            case toStorage: {
+                            case toWait: {
+                                if(!drive.isBusy()) {
+                                    blueDuckPaths.setPath(BlueDuckPaths.Paths.waiting);
+                                    waitTimer.reset();
+                                }
+                                break;
+                            }
+                            case waiting: {
+                                if(waitTimer.seconds() > 18) {
+                                    blueDuckPaths.setPath(BlueDuckPaths.Paths.toWarehouse);
+                                    drive.followTrajectorySequenceAsync(blueDuckPaths.toWarehouse);
+                                }
+                                break;
+                            }
+                            case toWarehouse: {
                                 if (!drive.isBusy()) {
                                     blueDuckPaths.setPath(BlueDuckPaths.Paths.start);
                                     requestOpModeStop();
                                 }
+                                break;
                             }
                         }
                     }
+                }
+                break;
+            }
+            case NEW_DUCK: {
+                switch(PoseStorage.alliance) {
+                    case BLUE: {
+                        switch (blueNewDuckPaths.path) {
+                            case start: {
+                                drive.setPoseEstimate(blueNewDuckPaths.startingPose);
+                                switch (position) {
+                                    case LEFT: {
+                                        drive.followTrajectorySequenceAsync(blueNewDuckPaths.toHubLeft);
+                                        break;
+                                    }
+                                    case CENTER: {
+                                        drive.followTrajectorySequenceAsync(blueNewDuckPaths.toHubCenter);
+                                        break;
+                                    }
+                                    default:
+                                    case RIGHT: {
+                                        drive.followTrajectorySequenceAsync(blueNewDuckPaths.toHubRight);
+                                        break;
+                                    }
+                            }
+                                blueNewDuckPaths.setPath(BlueNewDuckPaths.Paths.toHub);
+                                break;
+                            }
+                            case toHub: {
+                                if(!drive.isBusy()) {
+                                    if (!drive.isBusy()) {
+                                        blueNewDuckPaths.setPath(BlueNewDuckPaths.Paths.delivering);
+                                        depositController.set(true);
+                                        deliveryTimer.reset();
+                                    }
+                                }
+                                break;
+                            }
+                            case delivering: {
+                                if (deliveryTimer.seconds() > .75) {
+                                    blueNewDuckPaths.setPath(BlueNewDuckPaths.Paths.toDuck);
+                                    depositController.set(false);
+                                    armController.setPosition((int) armStartPos);
+                                    switch (position) {
+                                        case LEFT:
+                                            drive.followTrajectorySequenceAsync(blueNewDuckPaths.toDuckLeft);
+                                            break;
+
+                                        case CENTER:
+                                            drive.followTrajectorySequenceAsync(blueNewDuckPaths.toDuckCenter);
+                                            break;
+
+                                        default:
+                                        case RIGHT:
+                                            drive.followTrajectorySequenceAsync(blueNewDuckPaths.toDuckRight);
+                                            break;
+                                    }
+                                    break;
+                                }
+                                break;
+                            }
+
+
+                            case toDuck: {
+                                if(!drive.isBusy()) {
+                                    blueNewDuckPaths.setPath(BlueNewDuckPaths.Paths.spinDuck);
+                                    duck.spinDuckAuto();
+                                }
+                                break;
+                            }
+
+                            case spinDuck: {
+                                if(!duck.isBusy()) {
+                                    drive.followTrajectorySequenceAsync(blueNewDuckPaths.toWarehouse);
+                                    blueNewDuckPaths.setPath(BlueNewDuckPaths.Paths.toWarehouse);
+                                }
+                                break;
+                            }
+                            case toWarehouse: {
+                                if(!drive.isBusy()) {
+                                    requestOpModeStop();
+                                }
+                                break;
+                            }
+
+                            }
+                    }
+                    case RED: {
+                        switch (redNewDuckPaths.path) {
+                            case start: {
+                                drive.setPoseEstimate(redNewDuckPaths.startingPose);
+                                switch (position) {
+                                    case LEFT: {
+                                        drive.followTrajectorySequenceAsync(redNewDuckPaths.toHubLeft);
+                                        break;
+                                    }
+                                    case CENTER: {
+                                        drive.followTrajectorySequenceAsync(redNewDuckPaths.toHubCenter);
+                                        break;
+                                    }
+                                    default:
+                                    case RIGHT: {
+                                        drive.followTrajectorySequenceAsync(redNewDuckPaths.toHubRight);
+                                        break;
+                                    }
+                                }
+                                redNewDuckPaths.setPath(RedNewDuckPaths.Paths.toHub);
+                                break;
+                            }
+                            case toHub: {
+                                if(!drive.isBusy()) {
+                                    if (!drive.isBusy()) {
+                                        redNewDuckPaths.setPath(RedNewDuckPaths.Paths.delivering);
+                                        depositController.set(true);
+                                        deliveryTimer.reset();
+                                    }
+                                }
+                                break;
+                            }
+                            case delivering: {
+                                if (deliveryTimer.seconds() > .75) {
+                                    redNewDuckPaths.setPath(RedNewDuckPaths.Paths.toDuck);
+                                    depositController.set(false);
+                                    armController.setPosition((int) armStartPos);
+                                    switch (position) {
+                                        case LEFT:
+                                            drive.followTrajectorySequenceAsync(redNewDuckPaths.toDuckLeft);
+                                            break;
+
+                                        case CENTER:
+                                            drive.followTrajectorySequenceAsync(redNewDuckPaths.toDuckCenter);
+                                            break;
+
+                                        default:
+                                        case RIGHT:
+                                            drive.followTrajectorySequenceAsync(redNewDuckPaths.toDuckRight);
+                                            break;
+                                    }
+                                    break;
+                                }
+                                break;
+                            }
+
+
+                            case toDuck: {
+                                if(!drive.isBusy()) {
+                                    redNewDuckPaths.setPath(RedNewDuckPaths.Paths.spinDuck);
+                                    duck.spinDuckAuto();
+                                }
+                                break;
+                            }
+
+                            case spinDuck: {
+                                if(!duck.isBusy()) {
+                                    drive.followTrajectorySequenceAsync(redNewDuckPaths.toWarehouse);
+                                    redNewDuckPaths.setPath(RedNewDuckPaths.Paths.toWarehouse);
+                                }
+                                break;
+                            }
+                            case toWarehouse: {
+                                if(!drive.isBusy()) {
+                                    requestOpModeStop();
+                                }
+                                break;
+                            }
+
+                        } }
                 }
             }
         }
