@@ -7,7 +7,7 @@ import com.qualcomm.robotcore.hardware.Servo;
 public class DepositController {
     public static double kickerStartPos = 0,
             kickerHoldPos = .12,
-            kickerKickPos = .5,
+            kickerKickPos = .475,
             armServoShutPos = 0.09,
             armServoOpenPos = .2;
     Servo doorServo, kickerServo;

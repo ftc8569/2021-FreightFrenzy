@@ -116,6 +116,22 @@ public class MainAutoV1 extends TeleOPV1 {
         armController.setPower(ArmController.armSetPosPower);
 
 
+        if(initRed) {
+            redWarehousePaths = new RedWarehousePaths(drive);
+            redDuckPaths = new RedDuckPaths(drive);
+
+            redNewDuckPaths = new RedNewDuckPaths(drive);
+
+
+        }
+
+        if(initBlue) {
+            blueDuckPaths = new BlueDuckPaths(drive);
+            blueWarehousePaths = new BlueWarehousePaths(drive);
+
+            blueNewDuckPaths = new BlueNewDuckPaths(drive);
+
+        }
 
         tapePanServo.setPosition(tapePanVisionPos);
         tapeTiltServo.setPosition(tapeTiltVisionPos);
@@ -133,17 +149,13 @@ public class MainAutoV1 extends TeleOPV1 {
         {
             if(!pathsCreated) {
                 if(initRed) {
-                    redWarehousePaths = new RedWarehousePaths(drive);
-                    redDuckPaths = new RedDuckPaths(drive);
 
-                    redNewDuckPaths = new RedNewDuckPaths(drive);
+
                     redNewDuckPaths.init();
                 }
 
                 if(initBlue) {
-                    blueDuckPaths = new BlueDuckPaths(drive);
-                    blueWarehousePaths = new BlueWarehousePaths(drive);
-                    blueNewDuckPaths = new BlueNewDuckPaths(drive);
+
                     blueNewDuckPaths.init();
                 }
 
@@ -746,6 +758,7 @@ public class MainAutoV1 extends TeleOPV1 {
                             }
 
                             }
+                            break;
                     }
                     case RED: {
                         switch (redNewDuckPaths.path) {
